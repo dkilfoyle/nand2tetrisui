@@ -93,35 +93,9 @@ const Plus = addToken({ name: "Plus", pattern: /\+/ });
 const Minus = addToken({ name: "Minus", pattern: /-/ });
 const INT = addToken({ name: "INT", pattern: /[0-9]+/ });
 
-const chipDetails = {
-  Nand16: { name: "Nand16", inputs: [{ name: "in", width: 16 }], outputs: [{ name: "out", width: 16 }] },
-};
-
 const chipNames = [
-  "Nand16",
-  "Nand",
-  "Not16",
-  "Not",
-  "And16",
-  "And",
-  "Or8Way",
-  "Or16",
-  "Or",
-  "XOr16",
-  "XOr",
-  "Xor16",
-  "Xor",
-  "Mux16",
-  "Mux4Way16",
-  "Mux8Way16",
-  "Mux",
-  "DMux4Way",
-  "DMux8Way",
-  "DMux",
   "HalfAdder",
   "FullAdder",
-  "Add16",
-  "Inc16",
   "ALU",
   "ALUNoStat",
   "DFF",
