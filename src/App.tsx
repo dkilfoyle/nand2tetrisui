@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+// import { useEffect, useState } from "react";
 import { ChakraProvider, Divider, Flex, Heading, VStack } from "@chakra-ui/react";
-import { CodeEditor } from "./CodeEditor";
-import { registerLanguages } from "./languages/loader";
+import { CodeEditor } from "./components/editor/CodeEditor";
+import { registerLanguages } from "./components/editor/monarch/loader";
 registerLanguages();
 
 export default function App() {
-  const [text, setText] = useState('print("Hello world!")');
+  // const [text, setText] = useState('print("Hello world!")');
   return (
     <ChakraProvider>
       <Flex h="100vh" w="100vw" p={10}>
