@@ -239,6 +239,10 @@ interface INetlist {
   connectors: IConnection[];
 }
 
+const isIToken = (object: any): object is IToken => {
+  return "image" in object;
+};
+
 const compileAstToNetlist = (ast: IChip) => {
   const netlist: INetlist = { devices: {}, connectors: [] };
   const compileErrors: monacoT.editor.IMarkerData[] = [];
@@ -254,6 +258,18 @@ const compileAstToNetlist = (ast: IChip) => {
     if (pinWidth != 1) throw Error("pinWidth > 1 not implemented");
     netlist.devices[pin.name.image] = { type: "Lamp", label: pin.name.image, bits: pinWidth };
   });
+
+  //   IN a, b;    // 1-bit inputs
+  // OUT sum,    // Right bit of a + b
+  //     carry;  // Left bit of a + b
+
+  // PARTS:
+  // Not(in=a, out=nota);
+  // Not(in=b, out=notb);
+  // And(a=nota, b=b, out=nAB);
+  // And(a=a, b=notb, out=AnB);
+  // Or(a=nAB, b=AnB, out=sum);
+  // And(a=a, b=b, out=carry);
 
   ast.parts.forEach((part, part_num) => {
     const device: IDevice = { type: "unset", bits: 1, label: "unset" };
@@ -272,12 +288,46 @@ const compileAstToNetlist = (ast: IChip) => {
     }
     netlist.devices[part.name.image + part_num] = device;
 
+    // make a list of all outputs and expected widths
+    // Not(in=a, out=nota); ===> add nota, 1
+    part.wires.forEach((wire) => {
+      // check for valid output assignment
+      // output cannot be a chip input
+      // output cannot be true/false
+      // output should not be unused
+
+      const chip = builtinChips.find((chip) => chip.name == part.name.image);
+      if (!chip) throw Error("Unable to find matching builtin " + part.name.image);
+
+      if (chip.outputs.some((output) => output.name == wire.lhs.name.image)) {
+        // wire is of form output_pin = wire.rhs
+        if (isIToken(wire.rhs)) {
+          // cannot assign output pin to true/false
+          compileErrors.push({
+            message: `Cannot assign output pin to ${wire.rhs.image}`,
+            startColumn: wire.rhs.startColumn || 0,
+            startLineNumber: wire.rhs.startLine || 0,
+            endColumn: wire.rhs.endColumn ? wire.rhs.endColumn + 1 : 0,
+            endLineNumber: wire.rhs.endLine || 0,
+            severity: 4,
+          });
+          return { netlist, compileErrors };
+        }
+      }
+    });
+  });
+
+  ast.parts.forEach((part, part_num) => {
     part.wires.forEach((wire) => {
       // make sure lhs is a valid port for this part
       const chip = builtinChips.find((chip) => chip.name == part.name.image);
       if (!chip) throw Error("Unable to find matching builtin " + part.name.image);
       if (chip.inputs.some((input) => input.name == wire.lhs.name.image)) {
         // wire.lhs is an input
+        // wire.rhs must be a chip input or defined in a part output
+        // netlist.connectors.push({
+        //   name:
+        // })
       } else if (chip.outputs.some((output) => output.name == wire.lhs.name.image)) {
         // wire.lhs in an output
       } else {
