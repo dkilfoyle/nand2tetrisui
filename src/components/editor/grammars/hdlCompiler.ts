@@ -12,8 +12,8 @@ interface IDevice {
 
 interface IConnection {
   name: string;
-  from: { id: string; port: string };
-  to: { id: string; port: string };
+  from: { id: string; port: string; width: number };
+  to: { id: string; port: string; width: number };
 }
 
 interface INetlist {
@@ -186,6 +186,7 @@ export const compileHdl = (ast: IAstChip) => {
 
     // track which indexes for a pin have been assigned
     const inPins: Map<string, Set<number>> = new Map();
+    const wires: IConnection[] = [];
 
     part.wires.forEach((wire) => {
       const isRhsInternal = !(
@@ -215,6 +216,7 @@ export const compileHdl = (ast: IAstChip) => {
         // outputing from chip output to rhs
         // eg Or(a=x, b=y, out=myrhs);
         if (detectBadWriteTarget(wire.rhs, buildChip, compileErrors)) return { netlist: compileErrors };
+
         if (buildChip.isOutPin(wire.rhs.name.image)) {
           // outputing from partchip out to buildchip out
           // eg Or(out=chipout)
@@ -222,19 +224,55 @@ export const compileHdl = (ast: IAstChip) => {
           // eg Or(out=chipout)
           //    And(out=chipout)
           if (detectMultipleAssignment(wire.rhs, outPins, compileErrors)) return { netlist: compileErrors };
+        } else {
+          // rhs is an internal pin
+          // eg Or(out=myintrhs
+          if (wire.rhs.subBus) {
+            // eg Or(out=myinrhs[1])
+            compileErrors.push({
+              message: `Cannot write to sub bus of internal pin`,
+              ...getMarkerPositions(wire.rhs.name),
+              severity: 4,
+            });
+            return { netlist, compileErrors };
+          }
+          const rhsInternalPinData = internalPins.get(wire.rhs.name.image);
+          if (rhsInternalPinData == undefined) {
+            internalPins.set(wire.rhs.name.image, { isDefined: true, firstUse: wire.rhs.name });
+          } else {
+            if (rhsInternalPinData.isDefined) {
+              // duplicate definition
+              // eg Or(out=myintrhs)
+              //    And(out=myintrhs)
+              compileErrors.push({
+                message: `Internal pin already defined on line ${rhsInternalPinData.firstUse.startLine}`,
+                ...getMarkerPositions(wire.rhs.name),
+                severity: 4,
+              });
+              return { netlist, compileErrors };
+            }
+            rhsInternalPinData.isDefined = true;
+          }
         }
-
-        // if (rhsInternalPinData.isDefined) {
-        //   compileErrors.push({
-        //     message: chip.isOutPin(wire.rhs.name.image)
-        //       ? `Cannot write to output pin ${wire.rhs.name.image} multiple times`
-        //       : `Internal pin ${wire.rhs.name.image} already defined`,
-        //     ...getMarkerPositions(wire.rhs.name),
-        //     severity: 4,
-        //   });
-        //   return { netlist, compileErrors };
-        // } else rhsInternalPinData.isDefined = true;
+      } else {
+        // eg Or(bla=)
+        compileErrors.push({
+          message: `Undefined input/ouput pin name`,
+          ...getMarkerPositions(wire.lhs.name),
+          severity: 4,
+        });
+        return { netlist, compileErrors };
       }
+
+      // wires.push({
+      //   to: {
+      //     partId: partChip.name + part_num,
+      //     pinName: wire.lhs.name.image,
+      //     start: wire.lhs.subBus?.start || 0,
+      //     width:
+
+      //   }
+      // })
     });
   });
 
