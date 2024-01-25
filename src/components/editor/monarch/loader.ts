@@ -2,7 +2,7 @@ import { loader } from "@monaco-editor/react";
 import { CmpLanguage } from "./cmp";
 import { HdlLanguage } from "./hdl";
 import { TstLanguage } from "./tst";
-import { builtinChips } from "../grammars/builtins";
+import { builtinChips } from "../simulator/builtins";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 
 const LANGUAGES = {

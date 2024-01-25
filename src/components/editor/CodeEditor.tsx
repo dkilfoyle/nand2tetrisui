@@ -3,7 +3,8 @@ import { IRecognitionException } from "chevrotain";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { parseHdl } from "./grammars/hdl";
+import { parseHdl } from "./grammars/hdlParser";
+import { compileHdl } from "./grammars/hdlCompiler";
 
 const example = `// This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
@@ -92,9 +93,13 @@ export function CodeEditor() {
       }
     });
     console.log("onMount parse");
-    const { ast, parseErrors, compileErrors } = parseHdl(editor.current.getValue());
-    console.log(ast, parseErrors, compileErrors);
-    setErrors([...parseErrors, ...compileErrors]);
+    const value = editor.current.getValue();
+    const { ast, parseErrors } = parseHdl(value);
+    if (parseErrors.length > 0) setErrors(parseErrors);
+    else {
+      const { netlist, compileErrors } = compileHdl(ast);
+      setErrors(compileErrors);
+    }
   }, []);
 
   const onCursorPositionChange = (index: number) => {
@@ -104,9 +109,12 @@ export function CodeEditor() {
   const onValueChange = (value: string | undefined) => {
     console.log("here is the current model value:", value);
     if (!value) return;
-    const { ast, parseErrors, compileErrors } = parseHdl(value);
-    console.log(ast, parseErrors, compileErrors);
-    setErrors([...parseErrors, ...compileErrors]);
+    const { ast, parseErrors } = parseHdl(value);
+    if (parseErrors.length > 0) setErrors(parseErrors);
+    else {
+      const { netlist, compileErrors } = compileHdl(ast);
+      setErrors(compileErrors);
+    }
   };
 
   return <Editor language="hdl" value={example2} onChange={onValueChange} onMount={onMount} />;

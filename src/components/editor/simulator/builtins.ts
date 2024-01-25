@@ -5,6 +5,21 @@ interface IChip {
   outputs: { name: string; width: number }[];
 }
 
+interface IPin {
+  name: string;
+  width: number;
+}
+
+export class Chip {
+  constructor(public name: string, public inputs: IPin[], public outputs: IPin[]) {}
+  isInPin(pinName: string) {
+    return this.inputs.find((input) => input.name == pinName);
+  }
+  isOutPin(pinName: string) {
+    return this.outputs.find((output) => output.name == pinName);
+  }
+}
+
 export const builtinChips: IChip[] = [
   {
     name: "Not16",

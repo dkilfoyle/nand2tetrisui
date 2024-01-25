@@ -1,6 +1,6 @@
 import { EmbeddedActionsParser, IToken, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
-import { builtinChips } from "./builtins";
-import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
+import { builtinChips } from "../simulator/builtins";
+import { IAstPin, IAstChip, IAstPart, IAstWire, IAstWireEnd } from "./hdlInterface";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {
@@ -30,7 +30,7 @@ addToken({
 });
 
 const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9]*/ });
-const Chip = addToken({ name: "Chip", pattern: /CHIP/, longer_alt: ID });
+const ChipToken = addToken({ name: "Chip", pattern: /CHIP/, longer_alt: ID });
 const In = addToken({ name: "In", pattern: /IN/, longer_alt: ID });
 const Out = addToken({ name: "Out", pattern: /OUT/, longer_alt: ID });
 const False = addToken({ name: "True", pattern: /true/, longer_alt: ID });
@@ -56,38 +56,6 @@ builtinChips.forEach((chip) => {
 allTokens.push(ID);
 const hdlLexer = new Lexer(allTokens);
 
-interface IChip {
-  name: IToken;
-  inPins: IPin[];
-  outPins: IPin[];
-  parts: IPart[];
-}
-
-interface IPin {
-  name: IToken;
-  width: IToken | undefined;
-}
-
-interface IPart {
-  name: IToken;
-  wires: IWire[];
-}
-
-interface IWire {
-  lhs: IWireEnd;
-  rhs: IWireEnd | IToken;
-}
-
-interface IWireEnd {
-  name: IToken;
-  subBus?: ISubBus;
-}
-
-interface ISubBus {
-  i: IToken;
-  j?: IToken;
-}
-
 class HdlParser extends EmbeddedActionsParser {
   constructor() {
     super(allTokens);
@@ -95,7 +63,7 @@ class HdlParser extends EmbeddedActionsParser {
   }
 
   public chip = this.RULE("chip", () => {
-    let name = this.CONSUME(Chip);
+    let name = this.CONSUME(ChipToken);
     this.OR([
       {
         ALT: () => {
@@ -109,8 +77,8 @@ class HdlParser extends EmbeddedActionsParser {
       },
     ]);
     this.CONSUME(LCurly);
-    let inPins: IPin[] = [];
-    let outPins: IPin[] = [];
+    let inPins: IAstPin[] = [];
+    let outPins: IAstPin[] = [];
     this.OPTION(() => {
       inPins = this.SUBRULE(this.inList);
     });
@@ -119,7 +87,7 @@ class HdlParser extends EmbeddedActionsParser {
     });
     const parts = this.SUBRULE(this.partList);
     this.CONSUME(RCurly);
-    return { name, inPins, outPins, parts } as IChip;
+    return { name, inPins, outPins, parts } as IAstChip;
   });
 
   // PINS
@@ -136,7 +104,7 @@ class HdlParser extends EmbeddedActionsParser {
     return pins;
   });
   pinList = this.RULE("pinList", () => {
-    const pins: IPin[] = [];
+    const pins: IAstPin[] = [];
     this.MANY_SEP({
       SEP: Comma,
       DEF: () => {
@@ -162,7 +130,7 @@ class HdlParser extends EmbeddedActionsParser {
 
   // PARTS
   partList = this.RULE("partList", () => {
-    const parts: IPart[] = [];
+    const parts: IAstPart[] = [];
     this.CONSUME(Parts);
     this.MANY(() => {
       parts.push(this.SUBRULE(this.part));
@@ -178,7 +146,7 @@ class HdlParser extends EmbeddedActionsParser {
     return { name, wires };
   });
   wires = this.RULE("wires", () => {
-    const wires: IWire[] = [];
+    const wires: IAstWire[] = [];
     this.MANY_SEP({
       SEP: Comma,
       DEF: () => {
@@ -189,13 +157,13 @@ class HdlParser extends EmbeddedActionsParser {
   });
   wire = this.RULE("wire", () => {
     const lhs = this.SUBRULE(this.wireSide);
-    let rhs: IWireEnd | IToken = this.CONSUME(Equals);
+    let rhs: IAstWireEnd = { name: this.CONSUME(Equals) };
     this.OR([
       { ALT: () => (rhs = this.SUBRULE2(this.wireSide)) },
-      { ALT: () => (rhs = this.CONSUME(True)) },
-      { ALT: () => (rhs = this.CONSUME(False)) },
+      { ALT: () => (rhs = { name: this.CONSUME(True) }) },
+      { ALT: () => (rhs = { name: this.CONSUME(False) }) },
     ]);
-    return { lhs, rhs } as IWire;
+    return { lhs, rhs } as IAstWire;
   });
   wireSide = this.RULE("wireSide", () => {
     const name = this.CONSUME(ID);
@@ -203,7 +171,7 @@ class HdlParser extends EmbeddedActionsParser {
     this.OPTION(() => {
       subBus = this.SUBRULE(this.subBus);
     });
-    return { name, subBus } as IWireEnd;
+    return { name, subBus } as IAstWireEnd;
   });
   subBus = this.RULE("subBus", () => {
     this.CONSUME(LSquare);
@@ -211,7 +179,7 @@ class HdlParser extends EmbeddedActionsParser {
     let j;
     this.OPTION(() => (j = this.SUBRULE(this.subBusRest)));
     this.CONSUME(RSquare);
-    return { i, j };
+    return { start: i, end: j };
   });
   subBusRest = this.RULE("subBusRest", () => {
     this.CONSUME(Rest);
@@ -222,135 +190,10 @@ class HdlParser extends EmbeddedActionsParser {
 
 const hdlParser = new HdlParser();
 
-interface IDevice {
-  type: string;
-  label: string;
-  bits: number;
-}
-
-interface IConnection {
-  name: string;
-  from: { id: string; port: string };
-  to: { id: string; port: string };
-}
-
-interface INetlist {
-  devices: Record<string, IDevice>;
-  connectors: IConnection[];
-}
-
-const isIToken = (object: any): object is IToken => {
-  return "image" in object;
-};
-
-const compileAstToNetlist = (ast: IChip) => {
-  const netlist: INetlist = { devices: {}, connectors: [] };
-  const compileErrors: monacoT.editor.IMarkerData[] = [];
-
-  ast.inPins.forEach((pin) => {
-    const pinWidth = pin.width ? parseInt(pin.width.image) : 1;
-    if (pinWidth != 1) throw Error("pinWidth > 1 not implemented");
-    netlist.devices[pin.name.image] = { type: "Button", label: pin.name.image, bits: pinWidth };
-  });
-
-  ast.outPins.forEach((pin) => {
-    const pinWidth = pin.width ? parseInt(pin.width.image) : 1;
-    if (pinWidth != 1) throw Error("pinWidth > 1 not implemented");
-    netlist.devices[pin.name.image] = { type: "Lamp", label: pin.name.image, bits: pinWidth };
-  });
-
-  //   IN a, b;    // 1-bit inputs
-  // OUT sum,    // Right bit of a + b
-  //     carry;  // Left bit of a + b
-
-  // PARTS:
-  // Not(in=a, out=nota);
-  // Not(in=b, out=notb);
-  // And(a=nota, b=b, out=nAB);
-  // And(a=a, b=notb, out=AnB);
-  // Or(a=nAB, b=AnB, out=sum);
-  // And(a=a, b=b, out=carry);
-
-  ast.parts.forEach((part, part_num) => {
-    const device: IDevice = { type: "unset", bits: 1, label: "unset" };
-    switch (part.name.image) {
-      case "Or":
-      case "And":
-      case "Nand":
-      case "Xor":
-      case "Not":
-        device.type = part.name.image;
-        device.bits = 1;
-        device.label = part.name.image + part_num;
-        break;
-      default:
-        throw Error(`${part.name.image} to device conversion not defined yet`);
-    }
-    netlist.devices[part.name.image + part_num] = device;
-
-    // make a list of all outputs and expected widths
-    // Not(in=a, out=nota); ===> add nota, 1
-    part.wires.forEach((wire) => {
-      // check for valid output assignment
-      // output cannot be a chip input
-      // output cannot be true/false
-      // output should not be unused
-
-      const chip = builtinChips.find((chip) => chip.name == part.name.image);
-      if (!chip) throw Error("Unable to find matching builtin " + part.name.image);
-
-      if (chip.outputs.some((output) => output.name == wire.lhs.name.image)) {
-        // wire is of form output_pin = wire.rhs
-        if (isIToken(wire.rhs)) {
-          // cannot assign output pin to true/false
-          compileErrors.push({
-            message: `Cannot assign output pin to ${wire.rhs.image}`,
-            startColumn: wire.rhs.startColumn || 0,
-            startLineNumber: wire.rhs.startLine || 0,
-            endColumn: wire.rhs.endColumn ? wire.rhs.endColumn + 1 : 0,
-            endLineNumber: wire.rhs.endLine || 0,
-            severity: 4,
-          });
-          return { netlist, compileErrors };
-        }
-      }
-    });
-  });
-
-  ast.parts.forEach((part, part_num) => {
-    part.wires.forEach((wire) => {
-      // make sure lhs is a valid port for this part
-      const chip = builtinChips.find((chip) => chip.name == part.name.image);
-      if (!chip) throw Error("Unable to find matching builtin " + part.name.image);
-      if (chip.inputs.some((input) => input.name == wire.lhs.name.image)) {
-        // wire.lhs is an input
-        // wire.rhs must be a chip input or defined in a part output
-        // netlist.connectors.push({
-        //   name:
-        // })
-      } else if (chip.outputs.some((output) => output.name == wire.lhs.name.image)) {
-        // wire.lhs in an output
-      } else {
-        // wire.lhs is not a valid input or output
-        compileErrors.push({
-          message: `${wire.lhs.name.image} is not a valid input or output for ${part.name.image}`,
-          startColumn: wire.lhs.name.startColumn || 0,
-          startLineNumber: wire.lhs.name.startLine || 0,
-          endColumn: wire.lhs.name.endColumn ? wire.lhs.name.endColumn + 1 : 0,
-          endLineNumber: wire.lhs.name.endLine || 0,
-          severity: 4,
-        });
-      }
-    });
-  });
-  return { netlist: {}, compileErrors };
-};
-
 export const parseHdl = (hdl: string) => {
   const lexResult = hdlLexer.tokenize(hdl);
   hdlParser.input = lexResult.tokens;
   const ast = hdlParser.chip();
-  const { netlist, compileErrors } = compileAstToNetlist(ast);
   return {
     ast,
     parseErrors: hdlParser.errors.map((error) => ({
@@ -361,6 +204,5 @@ export const parseHdl = (hdl: string) => {
       endLineNumber: error.token.endLine || 0,
       severity: 8,
     })),
-    compileErrors,
   };
 };
