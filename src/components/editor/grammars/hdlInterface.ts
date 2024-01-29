@@ -1,33 +1,38 @@
-import { IToken } from "chevrotain";
+export interface Span {
+  startColumn: number;
+  startLineNumber: number;
+  endColumn: number;
+  endLineNumber: number;
+  startOffset: number;
+  endOffset: number;
+}
 
 export interface IAstChip {
-  name: IToken;
-  inPins: IAstPin[];
-  outPins: IAstPin[];
+  name: string;
+  inPins: IAstPinDeclaration[];
+  outPins: IAstPinDeclaration[];
   parts: IAstPart[];
 }
 
-export interface IAstPin {
-  name: IToken;
-  width: IToken | undefined;
+export interface IAstPinDeclaration {
+  name: string;
+  width: number;
 }
 
 export interface IAstPart {
-  name: IToken;
+  name: string;
   wires: IAstWire[];
+  span: Span;
 }
 
 export interface IAstWire {
-  lhs: IAstWireEnd;
-  rhs: IAstWireEnd;
+  lhs: IAstPinParts;
+  rhs: IAstPinParts;
 }
 
-export interface IAstWireEnd {
-  name: IToken;
-  subBus?: IAstSubBus;
-}
-
-export interface IAstSubBus {
-  start: IToken;
-  end?: IToken;
+export interface IAstPinParts {
+  name: string;
+  start?: number;
+  end?: number;
+  span: Span;
 }

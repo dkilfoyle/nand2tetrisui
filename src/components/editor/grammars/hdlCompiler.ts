@@ -1,280 +1,272 @@
-import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
-import { IAstChip, IAstWireEnd } from "./hdlInterface";
-import { Chip, builtinChips } from "../simulator/builtins";
-import _ from "lodash";
-import { IToken } from "chevrotain";
+import { Err, isErr, isOk, Ok, Result } from "@davidsouther/jiffies/lib/esm/result.js";
+import { Chip, Connection } from "@nand2tetris/web-ide/simulator/src/chip/Chip";
+import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
+import { IAstChip, IAstPart, IAstPinParts, Span } from "./hdlInterface";
 
-interface IDevice {
-  type: string;
-  label: string;
-  bits: number;
+export const compileHdl = async (ast: IAstChip) => {
+  return await new ChipBuilder(ast).build();
+};
+
+function pinWidth(start: number, end: number | undefined): number | undefined {
+  if (end === undefined) {
+    return undefined;
+  }
+  if (end >= start) {
+    return end - start + 1;
+  }
+  if (start > 0 && end === 0) {
+    return 1;
+  }
+  throw new Error(`Bus specification has start > end (${start} > ${end})`);
 }
 
-interface IConnection {
-  name: string;
-  from: { id: string; port: string; width: number };
-  to: { id: string; port: string; width: number };
+export interface CompilationError {
+  message: string;
+  span: Span;
 }
 
-interface INetlist {
-  devices: Record<string, IDevice>;
-  connectors: IConnection[];
+interface InternalPin {
+  isDefined: boolean;
+  firstUse: Span;
 }
 
-const getMarkerPositions = (startToken: IToken, endToken?: IToken) => {
-  const eToken = endToken || startToken;
+function isConstant(pinName: string): boolean {
+  return pinName === "false" || pinName === "true" || pinName === "0" || pinName === "1";
+}
+
+function createWire(lhs: IAstPinParts, rhs: IAstPinParts): Connection {
   return {
-    startColumn: startToken.startColumn || 0,
-    startLineNumber: startToken.startLine || 0,
-    endColumn: eToken.endColumn ? eToken.endColumn + 1 : 0,
-    endLineNumber: eToken.endLine || 0,
+    to: {
+      name: lhs.name,
+      start: lhs.start ?? 0,
+      width: pinWidth(lhs.start ?? 0, lhs.end),
+    },
+    from: {
+      name: rhs.name,
+      start: rhs.start ?? 0,
+      width: pinWidth(rhs.start ?? 0, rhs.end),
+    },
   };
-};
+}
 
-const getIndices = (pin: IAstWireEnd): number[] => {
-  if (!pin.subBus) return [-1];
-  if (!pin.subBus.end) return [parseInt(pin.subBus.start.image)];
-  return _.range(parseInt(pin.subBus.start.image), parseInt(pin.subBus.end.image));
-};
+function getBusIndices(pin: IAstPinParts): number[] {
+  if (pin.start != undefined && pin.end != undefined) {
+    const indices = [];
+    for (let i = pin.start; i <= pin.end; i++) {
+      indices.push(i);
+    }
+    return indices;
+  }
+  return [-1];
+}
 
-const detectMultipleAssignment = (
-  pin: IAstWireEnd,
-  assignedPinIndexes: Map<string, Set<number>>,
-  compileErrors: monacoT.editor.IMarkerData[]
-) => {
-  const assignedIndices = assignedPinIndexes.get(pin.name.image);
-
-  if (!assignedIndices) {
-    assignedPinIndexes.set(pin.name.image, new Set(getIndices(pin)));
+function checkMultipleAssignments(pin: IAstPinParts, assignedIndexes: Map<string, Set<number>>, compileErrors: CompilationError[]) {
+  let errorIndex: number | undefined = undefined; // -1 stands for the whole bus width
+  const indices = assignedIndexes.get(pin.name);
+  if (!indices) {
+    assignedIndexes.set(pin.name, new Set(getBusIndices(pin)));
+  } else {
+    if (indices.has(-1)) {
+      errorIndex = pin.start ?? -1;
+    } else if (pin.start !== undefined && pin.end !== undefined) {
+      for (const i of getBusIndices(pin)) {
+        if (indices.has(i)) {
+          errorIndex = i;
+        }
+        indices.add(i);
+      }
+    } else {
+      indices.add(-1);
+    }
+  }
+  if (errorIndex != undefined) {
+    compileErrors.push({
+      message: `Cannot write to pin ${pin.name}${errorIndex != -1 ? `[${errorIndex}]` : ""} multiple times`,
+      span: pin.span,
+    });
     return false;
   }
+  return true;
+}
 
-  if (assignedIndices.has(-1)) {
-    // already have assignment to full bus, can't overwrite this assignment
-    compileErrors.push({
-      message: `${pin.name.image} bus already fully assigned`,
-      ...getMarkerPositions(pin.name),
-      severity: 4,
-    });
+class ChipBuilder {
+  private chip: Chip;
+  private internalPins: Map<string, InternalPin> = new Map();
+  private inPins: Map<string, Set<number>> = new Map();
+  private outPins: Map<string, Set<number>> = new Map();
+  private compileErrors: CompilationError[] = [];
+  constructor(private ast: IAstChip) {
+    this.chip = new Chip(
+      ast.inPins.map((pin) => ({ pin: pin.name, width: pin.width })),
+      ast.outPins.map((pin) => ({ pin: pin.name, width: pin.width })),
+      ast.name,
+      [],
+      []
+    );
+  }
+  Err() {
+    if (this.compileErrors.length == 0) throw Error();
+    return { chip: this.chip, compileErrors: this.compileErrors };
+  }
+  Ok() {
+    if (this.compileErrors.length > 0) throw Error();
+    return { chip: this.chip, compileErrors: this.compileErrors };
+  }
+  build() {
+    this.compileErrors = [];
+    for (const part of this.ast.parts) {
+      const builtin = getBuiltinChip(part.name); // todo hdl can reference user defined chips from virtual fs
+      if (isErr(builtin)) {
+        this.compileErrors.push({ message: `Unknown part name ${part.name}`, span: part.span });
+        return this.Err();
+      }
+      if (part.name == this.chip.name) {
+        this.compileErrors.push({ message: `Cannot use chip ${part.name} to implement itself`, span: part.span });
+        return this.Err();
+      }
+      const partChip = Ok(builtin);
+      if (!this.wirePart(part, partChip)) return this.Err();
+    }
+    // if (!this.validateInternalPins()) return this.Err();
+    return this.Ok();
+  }
+
+  private wirePart(part: IAstPart, partChip: Chip) {
+    const wires: Connection[] = [];
+    this.inPins.clear();
+    for (const { lhs, rhs } of part.wires) {
+      if (!this.validateWire(partChip, lhs, rhs)) return false;
+      wires.push(createWire(lhs, rhs));
+    }
+    // if (!this.chip.wire(partChip, wires, this.compileErrors)) return false;
     return true;
   }
 
-  if (pin.subBus) {
-    getIndices(pin).forEach((index) => {
-      if (assignedIndices.has(index)) {
-        compileErrors.push({
-          message: `Cannot write to pin ${pin.name.image} multiple times`,
-          ...getMarkerPositions(pin.name),
-          severity: 4,
+  private validateWire(partChip: Chip, lhs: IAstPinParts, rhs: IAstPinParts) {
+    if (partChip.isInPin(lhs.name)) {
+      // eg Or(a=x) lhs(a) is an input
+      return this.validateInputWire(lhs, rhs);
+    } else if (partChip.isOutPin(lhs.name)) {
+      // eg Or(out=myOrOut) lhs(out) is an output
+      return this.validateOutputWire(rhs);
+    } else {
+      this.compileErrors.push({ message: `${lhs.name} is not a defined intput or output for ${partChip.name}`, span: lhs.span });
+      return false;
+    }
+  }
+
+  private isInternal(pinName: string): boolean {
+    return !(this.chip.isInPin(pinName) || this.chip.isOutPin(pinName) || isConstant(pinName));
+  }
+
+  private validateInputWire(lhs: IAstPinParts, rhs: IAstPinParts) {
+    if (!this.validateInputSource(rhs)) return false;
+    if (!checkMultipleAssignments(lhs, this.inPins, this.compileErrors)) return false;
+    // track internal pin use to detect undefined pins
+    if (this.isInternal(rhs.name)) {
+      // eg And(a=x, b=y, out=myInternalPin)
+      //    Or(a=myInternalPin)
+      const pinData = this.internalPins.get(rhs.name);
+      if (pinData == undefined) {
+        // eg Or(a=myInternalPin) - set myInternalPin firstUse here but undefined at this point
+        //    And(a=x, b=y, out=myInternalPin)
+        this.internalPins.set(rhs.name, { isDefined: false, firstUse: rhs.span });
+      } else {
+        // eg And(a=x, b=y, out=myInternalPin)
+        //    Or(a=myInternalPin) - myInternalPin is already defined but this is first use
+        pinData.firstUse = pinData.firstUse.startOffset < rhs.span.startOffset ? pinData.firstUse : rhs.span;
+      }
+    }
+    return true;
+  }
+
+  private validateInputSource(rhs: IAstPinParts) {
+    // IN x,y; OUT z;
+    if (this.chip.isOutPin(rhs.name)) {
+      // Can't have Or(a=z)
+      this.compileErrors.push({
+        message: "Cannot use output pin as own input source",
+        span: rhs.span,
+      });
+      return false;
+    } else if (!this.chip.isInPin(rhs.name) && rhs.start != undefined) {
+      // if not chip output or chip input then must be constant or internal pin
+      // Cant have Or(a=true[1])
+      // Cant have Or(a=myinternalpin[2])
+      this.compileErrors.push({
+        message: isConstant(rhs.name) ? `Cannot use sub bus of constant bus` : `Cannot use sub bus of internal pin ${rhs.name} as input`,
+        span: rhs.span,
+      });
+      return false;
+    }
+    // TODO: what's to stop doing Or(a=b) or Or(a=out)
+    return true;
+  }
+
+  private validateOutputWire(rhs: IAstPinParts) {
+    if (!this.validateWriteTarget(rhs)) return false;
+    // wire is of form out=outpin or out=internalpin
+    if (this.chip.isOutPin(rhs.name)) {
+      // wire is of for out=chipoutpin
+      if (!checkMultipleAssignments(rhs, this.outPins, this.compileErrors)) {
+        // Cant do Or(out=z); And(out=z);
+        return false;
+      }
+    } else {
+      // rhs is internal pin
+      // Or(out=myinternalpin)
+      if (rhs.start !== undefined || rhs.end !== undefined) {
+        // Cannto do Or(a=)
+        this.compileErrors.push({
+          message: `Cannot write to sub bus of internal pin ${rhs.name}`,
+          span: rhs.span,
         });
         return false;
-      } else assignedIndices.add(index);
-    });
-  } else {
-    assignedIndices.add(-1);
-    return false;
-  }
-};
-
-const detectBadInputSource = (rhs: IAstWireEnd, chip: Chip, compileErrors: monacoT.editor.IMarkerData[]) => {
-  if (chip.isOutPin(rhs.name.image)) {
-    compileErrors.push({
-      message: `Cannot use output pin as input`,
-      ...getMarkerPositions(rhs.name),
-      severity: 4,
-    });
-    return true;
-  } else if (!chip.isInPin(rhs.name.image) && rhs.subBus) {
-    // rhs is an internal pin
-    compileErrors.push({
-      message:
-        rhs.name.image == "true" || rhs.name.image == "false"
-          ? `Cannot use sub bus of constant bus` // actually would be a syntax error eg false[1]
-          : `Cannot use sub bus of internal pin as input`,
-      ...getMarkerPositions(rhs.name),
-      severity: 4,
-    });
-    return true;
-  }
-  return false;
-};
-
-const detectBadWriteTarget = (rhs: IAstWireEnd, chip: Chip, compileErrors: monacoT.editor.IMarkerData[]) => {
-  if (chip.isInPin(rhs.name.image)) {
-    // eg Or(out=chipinput)
-    compileErrors.push({
-      message: `Cannot write to chip input pin`,
-      ...getMarkerPositions(rhs.name),
-      severity: 4,
-    });
-    return true;
-  }
-  if (rhs.name.image == "true" || rhs.name.image == "false") {
-    // eg Or(out=true)
-    compileErrors.push({
-      message: `Cannot write to constant bus`,
-      ...getMarkerPositions(rhs.name),
-      severity: 4,
-    });
-    return true;
-  }
-  return false;
-};
-
-export const compileHdl = (ast: IAstChip) => {
-  const netlist: INetlist = { devices: {}, connectors: [] };
-  const compileErrors: monacoT.editor.IMarkerData[] = [];
-
-  ast.inPins.forEach((pin) => {
-    const pinWidth = pin.width ? parseInt(pin.width.image) : 1;
-    if (pinWidth != 1) throw Error("pinWidth > 1 not implemented");
-    netlist.devices[pin.name.image] = { type: "Button", label: pin.name.image, bits: pinWidth };
-  });
-
-  ast.outPins.forEach((pin) => {
-    const pinWidth = pin.width ? parseInt(pin.width.image) : 1;
-    if (pinWidth != 1) throw Error("pinWidth > 1 not implemented");
-    netlist.devices[pin.name.image] = { type: "Lamp", label: pin.name.image, bits: pinWidth };
-  });
-
-  //   IN a, b;    // 1-bit inputs
-  // OUT sum,    // Right bit of a + b
-  //     carry;  // Left bit of a + b
-
-  // PARTS:
-  // Not(in=a, out=nota);
-  // Not(in=b, out=notb);
-  // And(a=nota, b=b, out=nAB);
-  // And(a=a, b=notb, out=AnB);
-  // Or(a=nAB, b=AnB, out=sum);
-  // And(a=a, b=b, out=carry);
-
-  interface InternalPin {
-    isDefined: boolean;
-    firstUse: IToken;
-  }
-
-  const buildChip = new Chip(
-    ast.name.image,
-    ast.inPins.map((pin) => ({ name: pin.name.image, width: pin.width ? parseInt(pin.width.image) : 1 })),
-    ast.outPins.map((pin) => ({ name: pin.name.image, width: pin.width ? parseInt(pin.width.image) : 1 }))
-  );
-
-  const internalPins: Map<string, InternalPin> = new Map();
-  const outPins: Map<string, Set<number>> = new Map();
-
-  ast.parts.forEach((part, part_num) => {
-    const device: IDevice = { type: "unset", bits: 1, label: "unset" };
-    switch (part.name.image) {
-      case "Or":
-      case "And":
-      case "Nand":
-      case "Xor":
-      case "Not":
-        device.type = part.name.image;
-        device.bits = 1;
-        device.label = part.name.image + part_num;
-        break;
-      default:
-        throw Error(`${part.name.image} to device conversion not defined yet`);
-    }
-    netlist.devices[part.name.image + part_num] = device;
-
-    const builtin = builtinChips.find((chip) => chip.name == part.name.image);
-    if (!builtin) throw Error("Unable to find matching builtin " + part.name.image);
-    const partChip = new Chip(builtin.name, builtin.inputs, builtin.outputs);
-
-    // track which indexes for a pin have been assigned
-    const inPins: Map<string, Set<number>> = new Map();
-    const wires: IConnection[] = [];
-
-    part.wires.forEach((wire) => {
-      const isRhsInternal = !(
-        buildChip.isInPin(wire.rhs.name.image) ||
-        buildChip.isOutPin(wire.rhs.name.image) ||
-        wire.rhs.name.image == "true" ||
-        wire.rhs.name.image == "false"
-      );
-
-      if (partChip.isInPin(wire.lhs.name.image)) {
-        // inputing from rhs to chip input: lhs <= rhs
-        if (detectMultipleAssignment(wire.lhs, inPins, compileErrors)) return { netlist: {}, compileErrors };
-        if (detectBadInputSource(wire.rhs, buildChip, compileErrors)) return { netlist: {}, compileErrors };
-
-        if (isRhsInternal) {
-          const rhsInternalPinData = internalPins.get(wire.rhs.name.image);
-          if (rhsInternalPinData == undefined) {
-            // eg Not(in=blabla) // blabla is not yet targeted
-            //    Or(out=blabla) // now blabla is targeted
-            internalPins.set(wire.rhs.name.image, { isDefined: false, firstUse: wire.rhs.name });
-          } else {
-            rhsInternalPinData.firstUse =
-              rhsInternalPinData.firstUse.startOffset < wire.rhs.name.startOffset ? rhsInternalPinData.firstUse : wire.rhs.name;
-          }
-        }
-      } else if (partChip.isOutPin(wire.lhs.name.image)) {
-        // outputing from chip output to rhs
-        // eg Or(a=x, b=y, out=myrhs);
-        if (detectBadWriteTarget(wire.rhs, buildChip, compileErrors)) return { netlist: compileErrors };
-
-        if (buildChip.isOutPin(wire.rhs.name.image)) {
-          // outputing from partchip out to buildchip out
-          // eg Or(out=chipout)
-
-          // eg Or(out=chipout)
-          //    And(out=chipout)
-          if (detectMultipleAssignment(wire.rhs, outPins, compileErrors)) return { netlist: compileErrors };
-        } else {
-          // rhs is an internal pin
-          // eg Or(out=myintrhs
-          if (wire.rhs.subBus) {
-            // eg Or(out=myinrhs[1])
-            compileErrors.push({
-              message: `Cannot write to sub bus of internal pin`,
-              ...getMarkerPositions(wire.rhs.name),
-              severity: 4,
-            });
-            return { netlist, compileErrors };
-          }
-          const rhsInternalPinData = internalPins.get(wire.rhs.name.image);
-          if (rhsInternalPinData == undefined) {
-            internalPins.set(wire.rhs.name.image, { isDefined: true, firstUse: wire.rhs.name });
-          } else {
-            if (rhsInternalPinData.isDefined) {
-              // duplicate definition
-              // eg Or(out=myintrhs)
-              //    And(out=myintrhs)
-              compileErrors.push({
-                message: `Internal pin already defined on line ${rhsInternalPinData.firstUse.startLine}`,
-                ...getMarkerPositions(wire.rhs.name),
-                severity: 4,
-              });
-              return { netlist, compileErrors };
-            }
-            rhsInternalPinData.isDefined = true;
-          }
-        }
-      } else {
-        // eg Or(bla=)
-        compileErrors.push({
-          message: `Undefined input/ouput pin name`,
-          ...getMarkerPositions(wire.lhs.name),
-          severity: 4,
-        });
-        return { netlist, compileErrors };
       }
-
-      // wires.push({
-      //   to: {
-      //     partId: partChip.name + part_num,
-      //     pinName: wire.lhs.name.image,
-      //     start: wire.lhs.subBus?.start || 0,
-      //     width:
-
-      //   }
-      // })
-    });
-  });
-
-  return { netlist: {}, compileErrors };
-};
+      // track internal pin creation to detect undefined pins
+      const pinData = this.internalPins.get(rhs.name);
+      if (pinData == undefined) {
+        this.internalPins.set(rhs.name, {
+          isDefined: true,
+          firstUse: rhs.span,
+        });
+      } else {
+        if (pinData.isDefined) {
+          this.compileErrors.push({
+            message: `Internal pin ${rhs.name} already defined`,
+            span: rhs.span,
+          });
+          return false;
+        }
+        pinData.isDefined = true;
+      }
+    }
+    return true;
+  }
+  private validateWriteTarget(rhs: IAstPinParts) {
+    if (this.chip.isInPin(rhs.name)) {
+      // Cannot Or(out=x)
+      this.compileErrors.push({
+        message: `Cannot write to chip input ${rhs.name}`,
+        span: rhs.span,
+      });
+      return false;
+    }
+    if (isConstant(rhs.name)) {
+      this.compileErrors.push({
+        message: `Cannot write to constant`,
+        span: rhs.span,
+      });
+      return false;
+    }
+    // TODO: Cannot write to part input
+    // if (partChip.isInPin(rhs.name)) {
+    //   this.compileErrors.push({
+    //     message: `Cannot write to part input/output`,
+    //     span: rhs.span,
+    //   });
+    //   return false;
+    // }
+    return true;
+  }
+}

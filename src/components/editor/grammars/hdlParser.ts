@@ -1,6 +1,6 @@
 import { EmbeddedActionsParser, IToken, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
 import { builtinChips } from "../simulator/builtins";
-import { IAstPin, IAstChip, IAstPart, IAstWire, IAstWireEnd } from "./hdlInterface";
+import { IAstChip, IAstPart, IAstWire, IAstPinDeclaration, IAstPinParts, Span } from "./hdlInterface";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {
@@ -56,6 +56,29 @@ builtinChips.forEach((chip) => {
 allTokens.push(ID);
 const hdlLexer = new Lexer(allTokens);
 
+const getTokenSpan = (startToken: IToken, endToken?: IToken): Span => {
+  return {
+    startColumn: startToken.startColumn || 0,
+    startLineNumber: startToken.startLine || 0,
+    endColumn: (endToken || startToken).endColumn || 0,
+    endLineNumber: (endToken || startToken).endLine || 0,
+    startOffset: startToken.startOffset || 0,
+    endOffset: (endToken || startToken).endOffset || 0,
+  };
+};
+
+const mergeSpans = (s1: Span, s2?: Span) => {
+  if (!s2) return s1;
+  return {
+    startColumn: s1.startOffset <= s2.startOffset ? s1.startColumn : s2.startColumn,
+    startLineNumber: Math.min(s1.startLineNumber, s2.startLineNumber),
+    startOffset: Math.min(s1.startOffset, s2.startOffset),
+    endColumn: s1.endOffset >= s2.endOffset ? s1.endColumn : s2.endColumn,
+    endLineNumber: Math.max(s1.endLineNumber, s2.endLineNumber),
+    endOffset: Math.max(s1.endOffset, s2.endOffset),
+  };
+};
+
 class HdlParser extends EmbeddedActionsParser {
   constructor() {
     super(allTokens);
@@ -63,22 +86,23 @@ class HdlParser extends EmbeddedActionsParser {
   }
 
   public chip = this.RULE("chip", () => {
-    let name = this.CONSUME(ChipToken);
+    this.CONSUME(ChipToken);
+    let name = "";
     this.OR([
       {
         ALT: () => {
-          name = this.CONSUME(ID);
+          name = this.CONSUME(ID).image;
         },
       },
       {
         ALT: () => {
-          name = this.CONSUME(chipsCategory);
+          name = this.CONSUME(chipsCategory).image;
         },
       },
     ]);
     this.CONSUME(LCurly);
-    let inPins: IAstPin[] = [];
-    let outPins: IAstPin[] = [];
+    let inPins: IAstPinDeclaration[] = [];
+    let outPins: IAstPinDeclaration[] = [];
     this.OPTION(() => {
       inPins = this.SUBRULE(this.inList);
     });
@@ -104,7 +128,7 @@ class HdlParser extends EmbeddedActionsParser {
     return pins;
   });
   pinList = this.RULE("pinList", () => {
-    const pins: IAstPin[] = [];
+    const pins: IAstPinDeclaration[] = [];
     this.MANY_SEP({
       SEP: Comma,
       DEF: () => {
@@ -114,18 +138,18 @@ class HdlParser extends EmbeddedActionsParser {
     return pins;
   });
   pinDecl = this.RULE("pinDecl", () => {
-    const name = this.CONSUME(ID);
-    let width: IToken | undefined;
+    const name = this.CONSUME(ID).image;
+    let width = 1;
     this.OPTION(() => {
       width = this.SUBRULE(this.pinWidth);
     });
-    return { name, width };
+    return { name, width } as IAstPinDeclaration;
   });
   pinWidth = this.RULE("pinWidth", () => {
     this.CONSUME(LSquare);
-    const width = this.CONSUME(INT);
+    const width = this.CONSUME(INT).image;
     this.CONSUME(RSquare);
-    return width;
+    return parseInt(width);
   });
 
   // PARTS
@@ -142,9 +166,14 @@ class HdlParser extends EmbeddedActionsParser {
     this.CONSUME(LParen);
     const wires = this.SUBRULE(this.wires);
     this.CONSUME(RParen);
-    this.CONSUME(SemiColon);
-    return { name, wires };
+    const closeSemi = this.CONSUME(SemiColon);
+    return {
+      name: name.image,
+      wires,
+      span: getTokenSpan(name, closeSemi),
+    } as IAstPart;
   });
+
   wires = this.RULE("wires", () => {
     const wires: IAstWire[] = [];
     this.MANY_SEP({
@@ -156,30 +185,36 @@ class HdlParser extends EmbeddedActionsParser {
     return wires;
   });
   wire = this.RULE("wire", () => {
-    const lhs = this.SUBRULE(this.wireSide);
-    let rhs: IAstWireEnd = { name: this.CONSUME(Equals) };
-    this.OR([
-      { ALT: () => (rhs = this.SUBRULE2(this.wireSide)) },
-      { ALT: () => (rhs = { name: this.CONSUME(True) }) },
-      { ALT: () => (rhs = { name: this.CONSUME(False) }) },
-    ]);
+    const lhs = this.SUBRULE(this.pinParts);
+    this.CONSUME(Equals);
+    const rhs = this.OR([{ ALT: () => this.SUBRULE2(this.pinParts) }, { ALT: () => this.SUBRULE3(this.boolean) }]);
     return { lhs, rhs } as IAstWire;
   });
-  wireSide = this.RULE("wireSide", () => {
+  boolean = this.RULE("boolean", () => {
+    const name = this.OR([
+      {
+        ALT: () => this.CONSUME(True),
+      },
+      { ALT: () => this.CONSUME(False) },
+    ]);
+    return {
+      name: name.image,
+      start: undefined,
+      end: undefined,
+      span: getTokenSpan(name),
+    };
+  });
+  pinParts = this.RULE("pinParts", () => {
     const name = this.CONSUME(ID);
-    let subBus;
-    this.OPTION(() => {
-      subBus = this.SUBRULE(this.subBus);
-    });
-    return { name, subBus } as IAstWireEnd;
+    const subBus = this.OPTION(() => this.SUBRULE(this.subBus));
+    return { name: name.image, start: subBus?.start, end: subBus?.end, span: mergeSpans(getTokenSpan(name), subBus?.span) } as IAstPinParts;
   });
   subBus = this.RULE("subBus", () => {
-    this.CONSUME(LSquare);
+    const ls = this.CONSUME(LSquare);
     const i = this.CONSUME(INT);
-    let j;
-    this.OPTION(() => (j = this.SUBRULE(this.subBusRest)));
-    this.CONSUME(RSquare);
-    return { start: i, end: j };
+    const j = this.OPTION(() => this.SUBRULE(this.subBusRest));
+    const rs = this.CONSUME(RSquare);
+    return { start: parseInt(i.image), end: j ? parseInt(j.image) : undefined, span: getTokenSpan(ls, rs) };
   });
   subBusRest = this.RULE("subBusRest", () => {
     this.CONSUME(Rest);

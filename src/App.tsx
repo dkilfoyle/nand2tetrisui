@@ -4,6 +4,9 @@ import { CodeEditor } from "./components/editor/CodeEditor";
 import { registerLanguages } from "./components/editor/monarch/loader";
 registerLanguages();
 
+window.g = null;
+window.i = null;
+
 export default function App() {
   // const [text, setText] = useState('print("Hello world!")');
   return (
