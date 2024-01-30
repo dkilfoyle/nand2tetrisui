@@ -1,5 +1,5 @@
 import { Err, isErr, isOk, Ok, Result } from "@davidsouther/jiffies/lib/esm/result.js";
-import { Chip, Connection } from "@nand2tetris/web-ide/simulator/src/chip/Chip";
+import { Chip, Connection } from "./Chip";
 import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
 import { IAstChip, IAstPart, IAstPinParts, Span } from "./hdlInterface";
 
@@ -128,6 +128,7 @@ class ChipBuilder {
       if (!this.wirePart(part, partChip)) return this.Err();
     }
     // if (!this.validateInternalPins()) return this.Err();
+    this.chip.buildWires();
     return this.Ok();
   }
 
@@ -139,7 +140,17 @@ class ChipBuilder {
       wires.push(createWire(lhs, rhs));
     }
     // if (!this.chip.wire(partChip, wires, this.compileErrors)) return false;
-    return true;
+
+    console.log("wiring");
+    try {
+      this.chip.wire(partChip, wires);
+      return true;
+    } catch (e) {
+      console.log(e);
+      const err = e as CompilationError;
+      this.compileErrors.push(err);
+      return;
+    }
   }
 
   private validateWire(partChip: Chip, lhs: IAstPinParts, rhs: IAstPinParts) {

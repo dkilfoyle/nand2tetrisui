@@ -57,7 +57,7 @@ allTokens.push(ID);
 const hdlLexer = new Lexer(allTokens);
 
 const getTokenSpan = (startToken: IToken, endToken?: IToken): Span => {
-  return {
+  const span = {
     startColumn: startToken.startColumn || 0,
     startLineNumber: startToken.startLine || 0,
     endColumn: (endToken || startToken).endColumn || 0,
@@ -65,6 +65,8 @@ const getTokenSpan = (startToken: IToken, endToken?: IToken): Span => {
     startOffset: startToken.startOffset || 0,
     endOffset: (endToken || startToken).endOffset || 0,
   };
+  span.endColumn++;
+  return span;
 };
 
 const mergeSpans = (s1: Span, s2?: Span) => {

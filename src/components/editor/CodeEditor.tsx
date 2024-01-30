@@ -331,12 +331,14 @@ CHIP RAM64 {
 `;
 
 const example2 = `CHIP HalfAdder {
-    IN a, b;    // 1-bit inputs
+    IN x, y;    // 1-bit inputs
     OUT sum,    // Right bit of a + b 
         carry;  // Left bit of a + b
 
     PARTS:
-    Not(in=a, outz=nota);
+    And(a=x, b=y, out=myinternal);
+    And(a=y, b=myinternal, out=sum);
+    //Not(in=a, out=nota);
     //Not(in=b, out=notb);
     //And(a=nota, b=b, out=nAB);
     //And(a=a, b=notb, out=AnB);
@@ -403,7 +405,7 @@ export function CodeEditor() {
     if (parseErrors.length > 0) setErrors(parseErrors);
     else {
       compileHdl(ast).then(({ chip, compileErrors }) => {
-        setErrors(compileErrors);
+        setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
         console.log(chip);
       });
     }

@@ -41,31 +41,6 @@ export async function registerLanguages() {
           range: range,
         } as monacoT.languages.CompletionItem;
       });
-
-      // [
-      //   {
-      //     label: "simpleText",
-      //     kind: languages.CompletionItemKind.Text,
-      //     insertText: "simpleText",
-      //     range: range,
-      //   },
-      //   {
-      //     label: "testing",
-      //     kind: languages.CompletionItemKind.Keyword,
-      //     insertText: "testing(${1:condition})",
-      //     insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
-      //     range: range,
-      //   },
-      //   {
-      //     label: "RAM8",
-      //     kind: languages.CompletionItemKind.Snippet,
-      //     insertText: "RAM8(in=$1, load=$2, address=$3, out=$4);",
-      //     insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
-      //     documentation: "If-Else Statement",
-      //     detail: "bla bla",
-      //     range: range,
-      //   },
-      // ];
       return { suggestions: suggestions };
     },
   });
