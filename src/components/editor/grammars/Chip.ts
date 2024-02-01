@@ -212,33 +212,14 @@ export class Pins {
   }
 }
 
-interface ELKWire {
-  id: string;
-  source: string;
-  sourcePort: string;
-  target: string;
-  targetPort: string;
-}
-
-interface ELKPort {
-  id: string;
-  label: string;
-  node: string;
-  direction: "OUTPUT" | "INPUT";
-  properties: { index: number; side: "EAST" | "WEST" | "NORTH" | "SOUTH" };
-}
-
 let id = 0;
 export class Chip {
-  readonly id = id++;
+  private id = id++;
   ins = new Pins();
   outs = new Pins();
   pins = new Pins();
   parts = new Set<Chip>();
   clockedPins: Set<string>;
-  portAliases = new Map<string, string>();
-  ports = new Map<string, ELKPort>();
-  wires = new Array<ELKWire>();
 
   get clocked() {
     if (this.clockedPins.size > 0) {
@@ -253,7 +234,7 @@ export class Chip {
   constructor(
     ins: (string | { pin: string; width: number })[],
     outs: (string | { pin: string; width: number })[],
-    public name?: string,
+    public name: string,
     internals: (string | { pin: string; width: number })[] = [],
     clocked: string[] = []
   ) {
@@ -261,16 +242,6 @@ export class Chip {
       const { pin, width = 1 } =
         (inn as { pin: string }).pin !== undefined ? (inn as { pin: string; width: number }) : parsePinDecl(inn as string);
       this.ins.insert(new Bus(pin, width));
-
-      const pinName = typeof inn == "string" ? inn : inn.pin;
-
-      this.ports.set(pinName, {
-        id: `${name}${id}_${pinName}`,
-        node: `${name}${id}`,
-        label: inn.toString(),
-        direction: "OUTPUT",
-        properties: { index: 0, side: "EAST" },
-      });
     }
 
     for (const out of outs) {
@@ -355,16 +326,6 @@ export class Chip {
     return this.outs.has(pin);
   }
 
-  buildWires() {
-    console.log(this);
-    return this.wires.forEach((wire) => {
-      const sourcePort = this.ports.get(wire.sourcePort);
-      if (!sourcePort) throw Error(`No source port entry found for alias ${wire.sourcePort}`);
-      wire.source = sourcePort.node;
-      wire.sourcePort = sourcePort.id;
-    });
-  }
-
   wire(part: Chip, connections: Connection[]) {
     this.parts.add(part);
     for (const { to, from } of connections) {
@@ -372,33 +333,6 @@ export class Chip {
         this.wireOutPin(part, to, from);
       } else {
         this.wireInPin(part, to, from);
-      }
-    }
-
-    for (const { to, from } of connections) {
-      if (part.isOutPin(to.name)) {
-        // Or(out=internal|chipout)
-        // Or(out=myinternal)
-        // map myinternal to alias Or.out
-        this.ports.set(from.name, {
-          id: `${part.id}_${to.name}`,
-          node: `${part.id}`,
-          label: to.name,
-          direction: "OUTPUT",
-          properties: { index: 0, side: "EAST" },
-        });
-      } else if (part.isInPin(to.name)) {
-        // Or(a=x)
-        // to=a
-        // build a wire from -> to
-
-        this.wires.push({
-          id: `${this.wires.length}`,
-          source: "_ALIAS_",
-          sourcePort: from.name, // to be post-processed to this.ports.get(from.name)
-          target: `${part.id}`,
-          targetPort: `${part.id}_${to.name}`,
-        });
       }
     }
   }
@@ -420,12 +354,6 @@ export class Chip {
   }
 
   private wireOutPin(part: Chip, to: PinSide, from: PinSide) {
-    // Or(out=orout)
-    // partPin = out = to.name
-    // chipPin = orout = from.name
-    // partPin.next = chipPin
-    // so orout is just a alias for port or[id].out
-
     const partPin = assertExists(part.outs.get(to.name), () => `Cannot wire to missing pin ${to.name}`);
     to.width ??= partPin.width;
 

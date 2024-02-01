@@ -1,5 +1,5 @@
 import { Err, isErr, isOk, Ok, Result } from "@davidsouther/jiffies/lib/esm/result.js";
-import { Chip, Connection } from "./Chip";
+import { Chip, Connection, Pin } from "./Chip";
 import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
 import { IAstChip, IAstPart, IAstPinParts, Span } from "./hdlInterface";
 
@@ -89,12 +89,262 @@ function checkMultipleAssignments(pin: IAstPinParts, assignedIndexes: Map<string
   return true;
 }
 
+interface ELKEdge {
+  id: string;
+  source: string;
+  sourcePort: string;
+  target: string;
+  targetPort: string;
+  hwMeta: {
+    name: string;
+  };
+}
+
+interface ELKPort {
+  id: string;
+  direction: "OUTPUT" | "INPUT";
+  properties: { index: number; side: "EAST" | "WEST" | "NORTH" | "SOUTH" };
+  hwMeta: {
+    name: string;
+    connectedAsParent: boolean;
+    // pin: Pin;
+  };
+}
+
+interface ELKNode {
+  edges: ELKEdge[];
+  children: ELKNode[];
+  ports: ELKPort[];
+  id: string;
+  hwMeta: {
+    cls: string;
+    name: string;
+    isExternalPort: boolean;
+  };
+  properties: Record<string, any>;
+}
+
+class ElkBuilder {
+  pinPorts = new Map<string, { id: string; node: string; label: string }>(); // map chip input and internal pins to ports
+  wires = new Array<ELKEdge>();
+  idCounters: Record<string, number> = {
+    And: 0,
+    Or: 0,
+  };
+  partIds: string[] = [];
+
+  constructor(public chip: Chip) {
+    for (const pin of this.chip.ins.entries()) {
+      this.pinPorts.set(pin.name, {
+        id: `${this.chip.name}_${pin.name}`,
+        node: `${this.chip.name}`,
+        label: pin.name,
+        // pin
+      });
+    }
+  }
+
+  wire(part: Chip, connections: Connection[]) {
+    const partId = `${part.name}${this.idCounters[part.name]++}`;
+    this.partIds.push(partId);
+    for (const { to, from } of connections) {
+      if (part.isOutPin(to.name)) {
+        // Or(out=internal|chipout)
+        if (this.chip.hasOut(from.name)) {
+          // Or(out=chipout)
+          this.wires.push({
+            id: `${this.wires.length}`,
+            source: partId,
+            sourcePort: `${partId}_${to.name}`,
+            target: `${this.chip.name}`,
+            targetPort: `${this.chip.name}_${from.name}`,
+            hwMeta: { name: `${partId}_${to.name}` },
+          });
+        } else if (this.chip.hasIn(from.name)) {
+          throw Error();
+        } else {
+          // Or(out=myinternal)
+          // map myinternal to alias Or.out
+          this.pinPorts.set(from.name, {
+            id: `${partId}_${to.name}`,
+            node: partId,
+            label: to.name,
+          });
+        }
+      } else if (part.isInPin(to.name)) {
+        // Or(a=x)
+        // to=a
+        // build a wire from -> to
+
+        this.wires.push({
+          id: `${this.wires.length}`,
+          source: "_ALIAS_",
+          sourcePort: from.name, // to be post-processed to this.ports.get(from.name)
+          target: partId,
+          targetPort: `${partId}_${to.name}`,
+          hwMeta: { name: `${this.chip.name}_${from.name}` },
+        });
+      }
+    }
+  }
+
+  getELK() {
+    console.log(this);
+    this.wires.forEach((wire) => {
+      if (wire.source == "_ALIAS_") {
+        wire.hwMeta.name = wire.sourcePort;
+        const sourcePort = this.pinPorts.get(wire.sourcePort);
+        if (!sourcePort) throw Error(`No source port entry found for alias ${wire.sourcePort}`);
+        wire.source = sourcePort.node;
+        wire.sourcePort = sourcePort.id;
+      }
+    });
+
+    const ports: ELKPort[] = [];
+    for (const inPin of this.chip.ins.entries()) {
+      ports.push({
+        id: `${this.chip.name}_${inPin.name}`,
+        direction: "OUTPUT",
+        properties: { index: 0, side: "WEST" },
+        hwMeta: { name: inPin.name, connectedAsParent: false },
+      });
+    }
+    for (const outPin of this.chip.outs.entries()) {
+      ports.push({
+        id: `${this.chip.name}_${outPin.name}`,
+        direction: "INPUT",
+        properties: { index: 0, side: "EAST" },
+        hwMeta: { name: outPin.name, connectedAsParent: false },
+      });
+    }
+
+    const children: ELKNode[] = [];
+    [...this.chip.parts].forEach((part, i) => {
+      const partId = this.partIds[i];
+      const partPorts: ELKPort[] = [];
+      for (const pin of part.ins.entries()) {
+        partPorts.push({
+          id: `${partId}_${pin.name}`,
+          direction: "OUTPUT",
+          properties: { index: 0, side: "EAST" },
+          hwMeta: { connectedAsParent: false, name: pin.name },
+        });
+      }
+      for (const pin of part.outs.entries()) {
+        partPorts.push({
+          id: `${partId}_${pin.name}`,
+          direction: "INPUT",
+          properties: { index: 0, side: "WEST" },
+          hwMeta: { connectedAsParent: false, name: pin.name },
+        });
+      }
+      children.push({
+        id: this.partIds[i],
+        hwMeta: {
+          cls: "Operator",
+          name: part.name,
+          isExternalPort: false,
+        },
+        properties: {
+          "org.eclipse.elk.layered.mergeEdges": 1,
+          "org.eclipse.elk.portConstraints": "FIXED_ORDER",
+        },
+        ports: partPorts,
+        children: [],
+        edges: [],
+      });
+    });
+
+    return {
+      id: this.chip.name,
+      hwMeta: {
+        name: this.chip.name,
+        maxId: 100,
+      },
+      properties: {
+        "org.eclipse.elk.layered.mergeEdges": 1,
+        "org.eclipse.elk.portConstraints": "FIXED_ORDER",
+      },
+      ports,
+      edges: this.wires,
+      children,
+    };
+  }
+}
+
+// const getElkPorts = (chip: Chip, chipId: string) => {
+//   const ports: ELKPort[] = [];
+//   [...chip.ins.entries()].forEach((inPin, i) => {
+//     ports.push({
+//       id: `${chipId}_${inPin.name}`,
+//       label: inPin.name,
+//       node: chipId,
+//       direction: "OUTPUT",
+//       properties: { index: i, side: "WEST" },
+//       hwMeta: { name: chip.name, connectedAsParent: false },
+//     });
+//   });
+//   [...chip.outs.entries()].forEach((outPin, i) => {
+//     ports.push({
+//       id: `${chipId}_${outPin.name}`,
+//       label: outPin.name,
+//       node: chipId,
+//       direction: "INPUT",
+//       properties: { index: i, side: "EAST" },
+//       hwMeta: { name: chip.name, connectedAsParent: false },
+//     });
+//   });
+//   return ports;
+// }
+
+// const getElkEdges = (chip: Chip, chipId: string) => {
+//   const edges: ELKEdge[] = [];
+//    [...chip.outs.entries()].forEach((outPin, i) => {
+//     edges.push({
+//       id: outPin.name,
+//       source: chipId,
+//       sourcePort: `${chipId}_${outPin.name}`,
+//       target:
+//       targetPort: string
+//       })
+//    });
+
+// }
+
+// const elkBuilder = (chip: Chip) => {
+//   const elk: ELKNode = {
+//     hwMeta: {
+//       cls: "topchip",
+//       name: chip.name,
+//       isExternalPort: false,
+//     },
+//     id: chip.name,
+//     edges: [],
+//     ports: [],
+//     children: [],
+//   };
+//   elk.ports = getElkPorts(chip);
+
+//   const idCounters:Record<string,number> = {
+//     And: 0,
+//     Or: 0,
+//   };
+//   [...chip.parts.values()].forEach((part,i) => {
+//     const id = `${part.name}${idCounters[part.name]++}`
+//     const ports = getElkPorts(part);
+//     const edges = getElkEdges(part, id);
+
+//   })
+//   return elk;
+// };
+
 class ChipBuilder {
   private chip: Chip;
   private internalPins: Map<string, InternalPin> = new Map();
   private inPins: Map<string, Set<number>> = new Map();
   private outPins: Map<string, Set<number>> = new Map();
   private compileErrors: CompilationError[] = [];
+  private elkBuilder: ElkBuilder;
   constructor(private ast: IAstChip) {
     this.chip = new Chip(
       ast.inPins.map((pin) => ({ pin: pin.name, width: pin.width })),
@@ -103,6 +353,7 @@ class ChipBuilder {
       [],
       []
     );
+    this.elkBuilder = new ElkBuilder(this.chip);
   }
   Err() {
     if (this.compileErrors.length == 0) throw Error();
@@ -110,10 +361,11 @@ class ChipBuilder {
   }
   Ok() {
     if (this.compileErrors.length > 0) throw Error();
-    return { chip: this.chip, compileErrors: this.compileErrors };
+    return { chip: this.chip, compileErrors: this.compileErrors, elk: this.elkBuilder.getELK() };
   }
   build() {
     this.compileErrors = [];
+    this.elkBuilder = new ElkBuilder(this.chip);
     for (const part of this.ast.parts) {
       const builtin = getBuiltinChip(part.name); // todo hdl can reference user defined chips from virtual fs
       if (isErr(builtin)) {
@@ -128,7 +380,7 @@ class ChipBuilder {
       if (!this.wirePart(part, partChip)) return this.Err();
     }
     // if (!this.validateInternalPins()) return this.Err();
-    this.chip.buildWires();
+    console.log(this.elkBuilder.getELK());
     return this.Ok();
   }
 
@@ -139,11 +391,10 @@ class ChipBuilder {
       if (!this.validateWire(partChip, lhs, rhs)) return false;
       wires.push(createWire(lhs, rhs));
     }
-    // if (!this.chip.wire(partChip, wires, this.compileErrors)) return false;
-
-    console.log("wiring");
     try {
       this.chip.wire(partChip, wires);
+      this.elkBuilder.wire(partChip, wires);
+      // TODO: this.elk.wire(partChip, wires)
       return true;
     } catch (e) {
       console.log(e);

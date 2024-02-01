@@ -352,6 +352,7 @@ export function CodeEditor() {
   const monaco = useMonaco();
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
   const language = "hdl";
+  // const [hwSchematic, setHwSchematic] = useState({});
 
   // Add error markers on parse failure
   useEffect(() => {
@@ -386,9 +387,21 @@ export function CodeEditor() {
     console.log(ast, errors);
     if (parseErrors.length > 0) setErrors(parseErrors);
     else {
-      compileHdl(ast).then(({ chip, compileErrors }) => {
+      compileHdl(ast).then(({ chip, compileErrors, elk }) => {
         setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
         console.log(chip, compileErrors);
+        const svg = d3.select(schematicRef.current);
+
+        // .attr("width", "200px").attr("height", "200px");
+        const hwSchematic = new d3.HwSchematic(svg);
+        hwSchematic.bindData(elk).then(
+          () => {},
+          (e) => {
+            // hwSchematic.setErrorText(e);
+            console.log("hwscheme error", e);
+            throw e;
+          }
+        );
       });
     }
   }, []);
@@ -430,7 +443,8 @@ export function CodeEditor() {
     hwSchematic.bindData(graph).then(
       () => {},
       (e) => {
-        hwSchematic.setErrorText(e);
+        console.log("hwscheme error", e);
+        // hwSchematic.setErrorText(e);
         throw e;
       }
     );
