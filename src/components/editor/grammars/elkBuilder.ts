@@ -34,6 +34,7 @@ export interface ELKNode {
     name: string;
     isExternalPort?: boolean;
     maxId: number;
+    bodyText?: string;
   };
   properties: Record<string, any>;
 }

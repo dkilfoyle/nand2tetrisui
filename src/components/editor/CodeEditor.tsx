@@ -1,34 +1,19 @@
 import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseHdl } from "./grammars/hdlParser";
-
-import { Box, HStack } from "@chakra-ui/react";
-
-import "d3-hwschematic/dist/d3-hwschematic.css";
 import { compileHdl } from "./grammars/hdlCompiler";
-import { ELKNode } from "./grammars/elkBuilder";
 import { Chip } from "./grammars/Chip";
+import { elkAtom } from "../schematic/Schematic";
+import { useAtom } from "jotai";
 
-const example2 = `CHIP HalfAdder {
-    IN x, y;    // 1-bit inputs
-    OUT sum,    // Right bit of a + b 
-        carry;  // Left bit of a + b
-
-    PARTS:
-    	Xor(a=x,b=y,out=sum);
-	    And(a=x,b=y,out=carry);
-}`;
-
-export function CodeEditor() {
+export function CodeEditor({ sourceCode }: { sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
   const language = "hdl";
-  const hwSchematic = useRef();
-  const schematicRef = useRef<SVGSVGElement>();
-  const [elk, setElk] = useState<ELKNode>();
+
+  const [elk, setElk] = useAtom(elkAtom);
   const [chip, setChip] = useState<Chip>();
 
   // Add error markers on parse failure
@@ -52,19 +37,6 @@ export function CodeEditor() {
       });
     }
   }, [errors, editor, monaco, language]);
-
-  useEffect(() => {
-    console.log("ELK:", elk);
-    if (hwSchematic.current)
-      hwSchematic.current.bindData(elk).then(
-        () => {},
-        (e) => {
-          // hwSchematic.setErrorText(e);
-          console.log("hwscheme error", e);
-          throw e;
-        }
-      );
-  }, [elk]);
 
   useEffect(() => {
     console.log(chip);
@@ -113,28 +85,13 @@ export function CodeEditor() {
     }
   };
 
-  useEffect(() => {
-    const svg = d3.select(schematicRef.current);
-
-    // .attr("width", "200px").attr("height", "200px");
-    hwSchematic.current = new d3.HwSchematic(svg);
-    const zoom = d3.zoom();
-    zoom.on("zoom", function applyTransform(ev) {
-      hwSchematic.current.root.attr("transform", ev.transform);
-    });
-
-    // disable zoom on doubleclick
-    // because it interferes with component expanding/collapsing
-    svg.call(zoom).on("dblclick.zoom", null);
-  }, [schematicRef]);
-
-  return (
-    <HStack w="100%" h="100%">
-      <Editor language="hdl" value={example2} onChange={onValueChange} onMount={onMount} />
-      {/* <LayoutFlow></LayoutFlow> */}
-      <Box minW="400px">
-        <svg id="schemmaticsvg" width={"400px"} height={"400px"} ref={schematicRef}></svg>
-      </Box>
-    </HStack>
-  );
+  // return (
+  //   <HStack w="100%" h="100%">
+  //     <Editor language="hdl" value={example2} onChange={onValueChange} onMount={onMount} />
+  //     <Box minW="400px">
+  //       <svg id="schemmaticsvg" width={"400px"} height={"400px"} ref={schematicRef}></svg>
+  //     </Box>
+  //   </HStack>
+  // );
+  return <Editor language="hdl" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
 }
