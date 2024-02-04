@@ -1,6 +1,7 @@
 import { EmbeddedActionsParser, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
-import { getTokenSpan, mergeSpans } from "./parserUtils";
+import { CompilationError, getTokenSpan, mergeSpans } from "./parserUtils";
 import { IAstTst, IAstTstOperation, IAstTstStatement } from "./tstInterface";
+import { Chip } from "./Chip";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {
@@ -148,5 +149,18 @@ export const parseTst = (tst: string) => {
 };
 
 export const checkTst = (ast: IAstTst, chip: Chip) => {
+  if (!chip) {
+    console.log("not chip");
+    return [];
+  }
+  for (const statment of ast.statements) {
+    for (const operation of statment.operations) {
+      if (operation.opName == "set") {
+        if (!chip.hasIn(operation.assignment!.id)) return [{ message: "Set target is not a chip input", span: operation.span }];
+      } else if (operation.opName == "expect") {
+        if (!chip.hasOut(operation.assignment!.id)) return [{ message: "Expect target is not a chip out", span: operation.span }];
+      }
+    }
+  }
   return [];
 };

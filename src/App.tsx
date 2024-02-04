@@ -9,6 +9,7 @@ registerLanguages();
 import HalfAdderHDL from "./examples/HalfAdder.hdl?raw";
 import HalfAdderTST from "./examples/HalfAdder.tst?raw";
 import { TstEditor } from "./components/editor/TstEditor";
+import { TestTable } from "./components/tester/TestTable";
 
 window.g = null;
 window.i = null;
@@ -41,8 +42,17 @@ export default function App() {
           </Tabs>
         </Panel>
         <PanelResizeHandle style={{ width: "2px", background: "lightgray" }}></PanelResizeHandle>
+
         <Panel>
-          <Schematic></Schematic>
+          <PanelGroup direction="vertical">
+            <Panel defaultSize={60} minSize={20}>
+              <Schematic></Schematic>
+            </Panel>
+            <PanelResizeHandle style={{ height: "2px", background: "lightgray" }}></PanelResizeHandle>
+            <Panel defaultSize={40} minSize={20}>
+              <TestTable></TestTable>
+            </Panel>
+          </PanelGroup>
         </Panel>
       </PanelGroup>
     </Flex>

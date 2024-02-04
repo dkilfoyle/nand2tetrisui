@@ -33,3 +33,8 @@ export const mergeSpans = (s1: Span, s2?: Span) => {
     endOffset: Math.max(s1.endOffset, s2.endOffset),
   };
 };
+
+export interface CompilationError {
+  message: string;
+  span: Span;
+}

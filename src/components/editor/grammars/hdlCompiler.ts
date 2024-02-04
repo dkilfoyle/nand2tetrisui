@@ -3,7 +3,7 @@ import { Chip, Connection, Pin } from "./Chip";
 import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
 import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
 import { ElkBuilder } from "./elkBuilder";
-import { Span } from "./parserUtils";
+import { CompilationError, Span } from "./parserUtils";
 
 export const compileHdl = async (ast: IAstChip) => {
   return await new ChipBuilder(ast).build();
@@ -20,11 +20,6 @@ function pinWidth(start: number, end: number | undefined): number | undefined {
     return 1;
   }
   throw new Error(`Bus specification has start > end (${start} > ${end})`);
-}
-
-export interface CompilationError {
-  message: string;
-  span: Span;
 }
 
 interface InternalPin {
@@ -132,7 +127,7 @@ class ChipBuilder {
       const partChip = Ok(builtin);
       if (!this.wirePart(part, partChip)) return this.Err();
     }
-    // if (!this.validateInternalPins()) return this.Err();
+    if (!this.validateInternalPins()) return this.Err();
     return this.Ok();
   }
 
@@ -163,7 +158,7 @@ class ChipBuilder {
       // eg Or(out=myOrOut) lhs(out) is an output
       return this.validateOutputWire(rhs);
     } else {
-      this.compileErrors.push({ message: `${lhs.name} is not a defined intput or output for ${partChip.name}`, span: lhs.span });
+      this.compileErrors.push({ message: `${lhs.name} is not a defined input or output for ${partChip.name}`, span: lhs.span });
       return false;
     }
   }
@@ -280,6 +275,21 @@ class ChipBuilder {
     //   });
     //   return false;
     // }
+    return true;
+  }
+  private validateInternalPins() {
+    for (const [name, pinData] of this.internalPins) {
+      if (!pinData.isDefined) {
+        this.compileErrors.push({
+          message:
+            name.toLowerCase() == "true" || name.toLowerCase() == "false"
+              ? `The constants ${name.toLowerCase()} must be in lower-case`
+              : `Undefined internal pin name: ${name}`,
+          span: pinData.firstUse,
+        });
+        return false;
+      }
+    }
     return true;
   }
 }

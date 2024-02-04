@@ -41,59 +41,53 @@ export function HdlEditor({ sourceCode }: { sourceCode: string }) {
   }, [errors, editor, monaco, language]);
 
   useEffect(() => {
-    console.log(chip);
+    console.log("HdlEditor useEffect: chip", chip);
   }, [chip]);
 
-  const onMount: OnMount = useCallback((ed) => {
-    editor.current = ed;
-    editor.current?.onDidChangeCursorPosition((e) => {
-      const index = editor.current?.getModel()?.getOffsetAt(e.position);
-      if (index !== undefined) {
-        onCursorPositionChange?.(index);
+  const parseAndCompile = useCallback(
+    (code: string) => {
+      const { ast, parseErrors } = parseHdl(code);
+      if (parseErrors.length > 0) setErrors(parseErrors);
+      else {
+        compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
+          setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
+          if (compileErrors.length == 0) {
+            setElk(newelk);
+            setChip(chip);
+          }
+        });
       }
-    });
-    const value = editor.current.getValue();
-    const { ast, parseErrors } = parseHdl(value);
-    if (parseErrors.length > 0) setErrors(parseErrors);
-    else {
-      compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
-        setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-        if (compileErrors.length == 0) {
-          setElk(newelk);
-          setChip(chip);
+    },
+    [setChip, setElk]
+  );
+
+  const onMount: OnMount = useCallback(
+    (ed) => {
+      editor.current = ed;
+      editor.current?.onDidChangeCursorPosition((e) => {
+        const index = editor.current?.getModel()?.getOffsetAt(e.position);
+        if (index !== undefined) {
+          onCursorPositionChange?.(index);
         }
       });
-    }
-  }, []);
+      const value = editor.current.getValue();
+      parseAndCompile(value);
+    },
+    [parseAndCompile]
+  );
 
   const onCursorPositionChange = (index: number) => {
     // console.log("onCursorPositionChanged: index = ", index);
   };
 
-  const onValueChange = (value: string | undefined) => {
-    // console.log("here is the current model value:", value);
-    if (!value) return;
-    const { ast, parseErrors } = parseHdl(value);
-    if (parseErrors.length > 0) setErrors(parseErrors);
-    else {
-      compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
-        setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-        console.log(compileErrors.length == 0, elk);
-        if (compileErrors.length == 0) {
-          setElk(newelk);
-          setChip(chip);
-        }
-      });
-    }
-  };
+  const onValueChange = useCallback(
+    (value: string | undefined) => {
+      // console.log("here is the current model value:", value);
+      if (!value) return;
+      parseAndCompile(value);
+    },
+    [parseAndCompile]
+  );
 
-  // return (
-  //   <HStack w="100%" h="100%">
-  //     <Editor language="hdl" value={example2} onChange={onValueChange} onMount={onMount} />
-  //     <Box minW="400px">
-  //       <svg id="schemmaticsvg" width={"400px"} height={"400px"} ref={schematicRef}></svg>
-  //     </Box>
-  //   </HStack>
-  // );
   return <Editor language="hdl" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
 }
