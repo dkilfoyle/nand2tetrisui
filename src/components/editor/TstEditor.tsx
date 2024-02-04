@@ -28,10 +28,6 @@ export function TstEditor({ sourceCode }: { sourceCode: string }) {
     }
   }, [errors, editor, monaco]);
 
-  // useEffect(() => {
-  //   console.log("TstEditor useEffect[chip]", chip);
-  // }, [chip]);
-
   const parseAndCompile = useCallback(
     (code: string) => {
       const { ast, parseErrors } = parseTst(code);
@@ -50,6 +46,14 @@ export function TstEditor({ sourceCode }: { sourceCode: string }) {
     },
     [chip, setTests]
   );
+
+  useEffect(() => {
+    console.log("TstEditor useEffect[chip]", chip);
+    if (editor && editor.current) {
+      const value = editor.current.getValue();
+      parseAndCompile(value);
+    }
+  }, [chip, parseAndCompile]);
 
   const onMount: OnMount = useCallback(
     (ed) => {
