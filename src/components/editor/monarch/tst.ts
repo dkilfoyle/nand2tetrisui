@@ -3,17 +3,7 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 export const TstLanguage: monaco.languages.IMonarchLanguage = {
   defaultToken: "invalid",
 
-  keywords: [
-    "output-list",
-    "set",
-    "eval",
-    "output",
-    "echo",
-    "clear-echo",
-    "repeat",
-    "while",
-    "load",
-  ],
+  keywords: ["output-list", "set", "eval", "expect", "output", "echo", "clear-echo", "repeat", "while", "load"],
 
   // The main tokenizer for our languages
   tokenizer: {
@@ -23,10 +13,7 @@ export const TstLanguage: monaco.languages.IMonarchLanguage = {
 
       // identifiers and keywords
       [/ROM32K/, "keyword"],
-      [
-        /[a-zA-Z-]+/,
-        { cases: { "@keywords": "keyword", "@default": "identifier" } },
-      ],
+      [/[a-zA-Z-]+/, { cases: { "@keywords": "keyword", "@default": "identifier" } }],
 
       // numbers
       [/%X[0-9a-fA-F]+/, "number.hex"],

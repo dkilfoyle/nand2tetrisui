@@ -6,37 +6,38 @@ import { compileHdl } from "./grammars/hdlCompiler";
 import { Chip } from "./grammars/Chip";
 import { elkAtom } from "../schematic/Schematic";
 import { useAtom } from "jotai";
+import { checkTst, parseTst } from "./grammars/tstParser";
+import { chipAtom } from "./HdlEditor";
 
-export function CodeEditor({ sourceCode }: { sourceCode: string }) {
+export function TstEditor({ sourceCode }: { sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
-  const language = "hdl";
 
   const [elk, setElk] = useAtom(elkAtom);
-  const [chip, setChip] = useState<Chip>();
+  const [chip, setChip] = useAtom(chipAtom);
 
   // Add error markers on parse failure
-  useEffect(() => {
-    if (editor.current === undefined) return;
-    if (monaco === null) return;
-    const model = editor.current.getModel();
-    if (model === null) return;
-    monaco.editor.setModelMarkers(model, language, errors);
-    if (errors.length > 0) {
-      setElk({
-        id: "0",
-        hwMeta: { maxId: 0, bodyText: errors[0].message, name: "error", cls: null },
-        ports: [],
-        edges: [],
-        children: [],
-        properties: {
-          "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
-          "org.eclipse.elk.layered.mergeEdges": 1,
-        },
-      });
-    }
-  }, [errors, editor, monaco, language]);
+  // useEffect(() => {
+  //   if (editor.current === undefined) return;
+  //   if (monaco === null) return;
+  //   const model = editor.current.getModel();
+  //   if (model === null) return;
+  //   monaco.editor.setModelMarkers(model, language, errors);
+  //   if (errors.length > 0) {
+  //     setElk({
+  //       id: "0",
+  //       hwMeta: { maxId: 0, bodyText: errors[0].message, name: "error", cls: null },
+  //       ports: [],
+  //       edges: [],
+  //       children: [],
+  //       properties: {
+  //         "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
+  //         "org.eclipse.elk.layered.mergeEdges": 1,
+  //       },
+  //     });
+  //   }
+  // }, [errors, editor, monaco, language]);
 
   useEffect(() => {
     console.log(chip);
@@ -51,16 +52,12 @@ export function CodeEditor({ sourceCode }: { sourceCode: string }) {
       }
     });
     const value = editor.current.getValue();
-    const { ast, parseErrors } = parseHdl(value);
+    const { ast, parseErrors } = parseTst(value);
+    console.log("tst ast:", ast);
     if (parseErrors.length > 0) setErrors(parseErrors);
     else {
-      compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
-        setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-        if (compileErrors.length == 0) {
-          setElk(newelk);
-          setChip(chip);
-        }
-      });
+      const checkErrors = checkTst(ast, chip);
+      if (checkErrors.length > 0) setErrors(errors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
     }
   }, []);
 
@@ -71,17 +68,12 @@ export function CodeEditor({ sourceCode }: { sourceCode: string }) {
   const onValueChange = (value: string | undefined) => {
     // console.log("here is the current model value:", value);
     if (!value) return;
-    const { ast, parseErrors } = parseHdl(value);
+    const { ast, parseErrors } = parseTst(value);
+    console.log("tst ast:", ast);
     if (parseErrors.length > 0) setErrors(parseErrors);
     else {
-      compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
-        setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-        console.log(compileErrors.length == 0, elk);
-        if (compileErrors.length == 0) {
-          setElk(newelk);
-          setChip(chip);
-        }
-      });
+      const checkErrors = checkTst(ast, chip);
+      if (checkErrors.length > 0) setErrors(errors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
     }
   };
 
@@ -93,5 +85,5 @@ export function CodeEditor({ sourceCode }: { sourceCode: string }) {
   //     </Box>
   //   </HStack>
   // );
-  return <Editor language="hdl" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
+  return <Editor language="tst" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
 }

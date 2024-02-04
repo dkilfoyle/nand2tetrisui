@@ -1,4 +1,3 @@
-import { Box } from "@chakra-ui/react";
 import { useEffect, useRef } from "react";
 import { ELKNode } from "../editor/grammars/elkBuilder";
 import { atom, useAtom } from "jotai";

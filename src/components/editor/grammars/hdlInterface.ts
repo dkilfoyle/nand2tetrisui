@@ -1,11 +1,4 @@
-export interface Span {
-  startColumn: number;
-  startLineNumber: number;
-  endColumn: number;
-  endLineNumber: number;
-  startOffset: number;
-  endOffset: number;
-}
+import { Span } from "./parserUtils";
 
 export interface IAstChip {
   name: string;

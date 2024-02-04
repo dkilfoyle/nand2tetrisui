@@ -1,12 +1,14 @@
 // import { useEffect, useState } from "react";
-import { CodeEditor } from "./components/editor/CodeEditor";
-import { Divider, Flex, Heading, Tab, TabList, TabPanel, TabPanels, Tabs, VStack } from "@chakra-ui/react";
+import { HdlEditor } from "./components/editor/HdlEditor";
+import { Flex, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { registerLanguages } from "./components/editor/monarch/loader";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Schematic } from "./components/schematic/Schematic";
 registerLanguages();
 
-import HalfAdder from "./examples/HalfAdder.hdl?raw";
+import HalfAdderHDL from "./examples/HalfAdder.hdl?raw";
+import HalfAdderTST from "./examples/HalfAdder.tst?raw";
+import { TstEditor } from "./components/editor/TstEditor";
 
 window.g = null;
 window.i = null;
@@ -26,11 +28,11 @@ export default function App() {
               <TabPanel h="100%">
                 <PanelGroup direction="vertical">
                   <Panel defaultSize={70} minSize={20} style={{ paddingBottom: "5px" }}>
-                    <CodeEditor sourceCode={HalfAdder}></CodeEditor>
+                    <HdlEditor sourceCode={HalfAdderHDL}></HdlEditor>
                   </Panel>
                   <PanelResizeHandle style={{ height: "2px", background: "lightgray" }}></PanelResizeHandle>
                   <Panel defaultSize={30} minSize={20} style={{ paddingTop: "10px" }}>
-                    <CodeEditor sourceCode={HalfAdder}></CodeEditor>
+                    <TstEditor sourceCode={HalfAdderTST}></TstEditor>
                   </Panel>
                 </PanelGroup>
               </TabPanel>

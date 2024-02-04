@@ -1,8 +1,9 @@
 import { Err, isErr, isOk, Ok, Result } from "@davidsouther/jiffies/lib/esm/result.js";
 import { Chip, Connection, Pin } from "./Chip";
 import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
-import { IAstChip, IAstPart, IAstPinParts, Span } from "./hdlInterface";
+import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
 import { ElkBuilder } from "./elkBuilder";
+import { Span } from "./parserUtils";
 
 export const compileHdl = async (ast: IAstChip) => {
   return await new ChipBuilder(ast).build();
