@@ -2,7 +2,7 @@ import { Err, isErr, isOk, Ok, Result } from "@davidsouther/jiffies/lib/esm/resu
 import { Chip, Connection, Pin } from "./Chip";
 import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
 import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
-import { ElkBuilder } from "./elkBuilder";
+import { ElkBuilder } from "../../schematic/elkBuilder";
 import { CompilationError, Span } from "./parserUtils";
 
 export const compileHdl = async (ast: IAstChip) => {

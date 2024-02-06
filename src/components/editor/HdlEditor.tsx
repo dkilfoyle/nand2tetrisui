@@ -6,6 +6,7 @@ import { compileHdl } from "./grammars/hdlCompiler";
 import { Chip } from "./grammars/Chip";
 import { elkAtom } from "../schematic/Schematic";
 import { atom, useAtom } from "jotai";
+import { ELKNode } from "../schematic/elkBuilder";
 
 export const chipAtom = atom<Chip | undefined>(undefined);
 
@@ -36,7 +37,7 @@ export function HdlEditor({ sourceCode }: { sourceCode: string }) {
           "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
           "org.eclipse.elk.layered.mergeEdges": 1,
         },
-      });
+      } as ELKNode);
     }
   }, [errors, editor, monaco, language]);
 
@@ -52,7 +53,7 @@ export function HdlEditor({ sourceCode }: { sourceCode: string }) {
         compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
           setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
           if (compileErrors.length == 0) {
-            setElk(newelk);
+            setElk(newelk as ELKNode);
             setChip(chip);
           }
         });

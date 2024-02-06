@@ -1,0 +1,19 @@
+.inPortDefault {
+  color: blue;
+}
+
+.outPortDefault {
+  color: red;
+}
+
+.chipPortDefault {
+  color: green;
+}
+
+.portHigh {
+  fill: green;
+}
+
+.portLow {
+  fill: red;
+}

@@ -1,4 +1,4 @@
-import { Chip, Connection, Pin } from "./Chip";
+import { Chip, Connection, Pin } from "../editor/grammars/Chip";
 
 interface ELKEdge {
   id: string;
@@ -19,7 +19,9 @@ interface ELKPort {
     name: string;
     connectedAsParent: boolean;
     level: number;
-    // pin: Pin;
+    cssClass: string;
+    cssStyle: string;
+    pin: Pin;
   };
   children: ELKPort[];
 }
@@ -166,7 +168,7 @@ export class ElkBuilder {
         id: this.getElkId(pinId),
         direction: "INPUT",
         properties: { index, side: "WEST" },
-        hwMeta: { name: inPin.name, connectedAsParent: false, level: 0 },
+        hwMeta: { name: inPin.name, connectedAsParent: false, level: 0, pin: inPin, cssClass: "inPortDefault", cssStyle: "border-width:0" },
         children: [],
       });
     });
@@ -176,7 +178,7 @@ export class ElkBuilder {
         id: this.getElkId(pinId),
         direction: "OUTPUT",
         properties: { index, side: "EAST" },
-        hwMeta: { name: outPin.name, connectedAsParent: false, level: 0 },
+        hwMeta: { name: outPin.name, connectedAsParent: false, level: 0, pin: outPin, cssClass: "outPortDefault", cssStyle: "border-width:0" },
         children: [],
       });
     });
@@ -193,17 +195,17 @@ export class ElkBuilder {
     };
   };
 
-  chipPinToNode(pinName: string, index: number, portType: "INPUT" | "OUTPUT"): ELKNode {
-    const pinId = `${this.chip.name}_${pinName}`;
+  chipPinToNode(pin: Pin, index: number, portType: "INPUT" | "OUTPUT"): ELKNode {
+    const pinId = `${this.chip.name}_${pin.name}`;
     return {
-      hwMeta: { cls: null, isExternalPort: true, maxId: 0, name: pinName },
+      hwMeta: { cls: null, isExternalPort: true, maxId: 0, name: pin.name },
       id: this.getElkId(pinId + "node"),
       ports: [
         {
           id: this.getElkId(pinId),
           direction: portType == "INPUT" ? "OUTPUT" : "INPUT",
           properties: { index: 0, side: portType == "INPUT" ? "EAST" : "WEST" },
-          hwMeta: { connectedAsParent: false, level: 0, name: pinName },
+          hwMeta: { connectedAsParent: false, level: 0, name: pin.name, pin, cssClass: "chipPortDefault", cssStyle: "border-width:0" },
           children: [],
         },
       ],
@@ -225,10 +227,10 @@ export class ElkBuilder {
     const children: ELKNode[] = [];
     // chip ports to nodes with isExternalPort = true
     [...chip.ins.entries()].forEach((inPin, index) => {
-      children.push(this.chipPinToNode(inPin.name, index, "INPUT"));
+      children.push(this.chipPinToNode(inPin, index, "INPUT"));
     });
     [...chip.outs.entries()].forEach((outPin, index) => {
-      children.push(this.chipPinToNode(outPin.name, index, "OUTPUT"));
+      children.push(this.chipPinToNode(outPin, index, "OUTPUT"));
     });
     // chip parts to nodes
     [...chip.parts.values()].forEach((part, i) => {

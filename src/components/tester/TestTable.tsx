@@ -1,26 +1,38 @@
-import { useAtom } from "jotai";
+import { atom, useAtom } from "jotai";
 import { testsAtom } from "../editor/TstEditor";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { chipAtom } from "../editor/HdlEditor";
 
 import { AgGridReact } from "@ag-grid-community/react";
 import "@ag-grid-community/styles/ag-grid.css";
 import "@ag-grid-community/styles/ag-theme-quartz.css";
-import { ModuleRegistry } from "@ag-grid-community/core";
+import { CellClassParams, ColDef, ModuleRegistry } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Box } from "@chakra-ui/react";
+import { Bus, HIGH, LOW } from "../editor/grammars/Chip";
+import { IAstTst, IAstTstStatement } from "../editor/grammars/tstInterface";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
+
+type ITest = Record<string, any>;
+
+export const selectedTestAtom = atom<number | null>(null);
 
 export function TestTable() {
   const [tests, setTests] = useAtom(testsAtom);
   const [chip, setChip] = useAtom(chipAtom);
+  const [selectedTest, setSelectedTest] = useAtom(selectedTestAtom);
+
+  const gridRef = useRef<AgGridReact<ITest>>(null);
 
   const pinTable = useMemo(() => {
     if (!tests) return [];
-    const inputValues = new Map<string, number>(); // keep track of input pin assigned values
+    if (!chip) return [];
+    // const inputValues = new Map<string, number>(); // keep track of input pin assigned values
     const rows: Record<string, number | undefined>[] = [];
+    chip.reset();
 
+    let iStatement = 0;
     for (const testStatement of tests.statements) {
       const row: Record<string, number | undefined | { result: number; correct: boolean }> = {};
       for (const inPin of chip?.ins.entries()) {
@@ -31,30 +43,40 @@ export function TestTable() {
         row[outPin.name + "_e"] = undefined;
       }
       for (const testOperation of testStatement.operations) {
-        if (testOperation.opName == "set") inputValues.set(testOperation.assignment!.id, testOperation.assignment!.value);
-        else if (testOperation.opName == "eval") {
-          for (const [id, value] of inputValues.entries()) {
-            row[id] = value;
+        if (testOperation.opName == "set") {
+          // inputValues.set(testOperation.assignment!.id, testOperation.assignment!.value);
+          const pinOrBus = chip.get(testOperation.assignment!.id, testOperation.assignment!.index);
+          const value = testOperation.assignment!.value;
+          if (pinOrBus instanceof Bus) {
+            pinOrBus.busVoltage = value;
+          } else {
+            pinOrBus?.pull(value === 0 ? LOW : HIGH);
           }
-          if (!chip) throw Error();
+        } else if (testOperation.opName == "eval") {
+          for (const inPin of chip.ins.entries()) {
+            row[inPin.name] = inPin.busVoltage;
+          }
+          chip.eval();
           // TODO: Run simulation with inputvalues
           // get output values
           for (const outPin of chip.outs.entries()) {
-            row[outPin.name] = outPin.voltage();
+            row[outPin.name] = outPin.busVoltage;
           }
         } else if (testOperation.opName == "expect") {
           row[testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
         }
       }
+
+      row.index = iStatement++;
       rows.push(row);
     }
     console.log(rows);
     return rows;
   }, [tests, chip]);
 
-  const colDefs = useMemo(() => {
+  const colDefs = useMemo<ColDef[]>(() => {
     const defs = [];
-    if (!chip) return;
+    if (!chip) return [];
     for (const inPin of chip?.ins.entries()) {
       defs.push({ field: inPin.name, width: 50 });
     }
@@ -62,8 +84,16 @@ export function TestTable() {
       defs.push({
         headerName: outPin.name,
         children: [
-          { field: outPin.name, headerName: "Out", width: 70 },
-          { field: outPin.name + "_e", headerName: "Expect", width: 70 },
+          {
+            field: outPin.name,
+            headerName: "Out",
+            width: 70,
+            cellStyle: (params: CellClassParams) => {
+              if (params.data[outPin.name] != params.data[outPin.name + "_e"]) return { backgroundColor: "#F56565" };
+              else return { backgroundColor: "#48BB78" };
+            },
+          },
+          { field: outPin.name + "_e", headerName: "Exp", width: 70 },
         ],
       });
     }
@@ -79,9 +109,27 @@ export function TestTable() {
   //   console.log("TestTable useEffect[tests]", tests);
   // }, [tests]);
 
+  const onSelectionChanged = useCallback(() => {
+    if (!chip) return;
+    const selectedRows = gridRef.current!.api.getSelectedRows();
+    if (selectedRows.length == 0) {
+      setSelectedTest(null);
+      return;
+    }
+    if (selectedRows.length > 0) {
+      // TODO: Instead of rerunning store a copy of pinstates at end of every test statement
+      chip?.reset();
+      for (const inPin of chip?.ins.entries()) {
+        inPin.busVoltage = selectedRows[0][inPin.name];
+      }
+      chip.eval();
+      setSelectedTest(selectedRows[0].index);
+    } else setSelectedTest(null);
+  }, [chip, selectedTest, setSelectedTest]);
+
   return (
-    <Box padding={5} w="100%" h="100%">
-      <AgGridReact rowData={pinTable} columnDefs={colDefs} />
+    <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">
+      <AgGridReact ref={gridRef} rowData={pinTable} columnDefs={colDefs} onSelectionChanged={onSelectionChanged} rowSelection="single" />
     </Box>
   );
 }

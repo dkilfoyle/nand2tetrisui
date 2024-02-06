@@ -5,16 +5,21 @@ import { atom, useAtom } from "jotai";
 import { checkTst, parseTst } from "./grammars/tstParser";
 import { chipAtom } from "./HdlEditor";
 import { IAstTst } from "./grammars/tstInterface";
+import { selectedTestAtom } from "../tester/TestTable";
 
 export const testsAtom = atom<IAstTst | null>(null);
+
+import "./TstEditor.css";
 
 export function TstEditor({ sourceCode }: { sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
+  const [decorations, setDecorations] = useState<monacoT.editor.IEditorDecorationsCollection | null>(null);
 
   const [tests, setTests] = useAtom(testsAtom);
   const [chip, setChip] = useAtom(chipAtom);
+  const [selectedTest] = useAtom(selectedTestAtom);
 
   //Add error markers on parse failure
   useEffect(() => {
@@ -55,6 +60,25 @@ export function TstEditor({ sourceCode }: { sourceCode: string }) {
     }
   }, [chip, parseAndCompile]);
 
+  useEffect(() => {
+    if (!monaco || !decorations) return;
+    // console.log("tstEditor useEffect[selectedTest]", monaco, selectedTest, tests, editor.current);
+    if (selectedTest == null || tests == null) {
+      decorations?.clear();
+      return;
+    }
+    const statement = tests?.statements[selectedTest];
+    decorations.set([
+      {
+        range: new monaco.Range(statement.span.startLineNumber, 1, statement.span.endLineNumber, 1),
+        options: {
+          isWholeLine: true,
+          className: "selectedTestStatement",
+        },
+      },
+    ]);
+  }, [decorations, monaco, selectedTest, tests]);
+
   const onMount: OnMount = useCallback(
     (ed) => {
       editor.current = ed;
@@ -64,6 +88,7 @@ export function TstEditor({ sourceCode }: { sourceCode: string }) {
           onCursorPositionChange?.(index);
         }
       });
+      setDecorations(editor.current.createDecorationsCollection([]));
       const value = editor.current.getValue();
       parseAndCompile(value);
     },
