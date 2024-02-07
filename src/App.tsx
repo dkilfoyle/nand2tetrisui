@@ -6,38 +6,35 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Schematic } from "./components/schematic/Schematic";
 registerLanguages();
 
-import HalfAdderHDL from "./examples/HalfAdder.hdl?raw";
-import HalfAdderTST from "./examples/HalfAdder.tst?raw";
-import { TstEditor } from "./components/editor/TstEditor";
 import { TestTable } from "./components/tester/TestTable";
+import { FileTree } from "./components/files/FileTree";
+import { useAtom } from "jotai";
+import { FileTab } from "./components/FileTab";
+import { openFilesAtom } from "./store/atoms";
 
 window.g = null;
 window.i = null;
 
 export default function App() {
-  // const [text, setText] = useState('print("Hello world!")');
+  const [openFiles] = useAtom(openFilesAtom);
   return (
     <Flex h="100vh" w="100vw" p={3}>
       <PanelGroup direction="horizontal">
+        <Panel defaultSize={10}>
+          <FileTree />
+        </Panel>
+        <PanelResizeHandle style={{ width: "2px", background: "lightgray" }}></PanelResizeHandle>
         <Panel defaultSize={50} minSize={20}>
           <Tabs display="flex" flexDir="column" w="100%" h="100%">
             <TabList>
-              <Tab>HalfAdder</Tab>
-              <Tab>Another</Tab>
+              {openFiles.map((f) => (
+                <Tab>{f}</Tab>
+              ))}
             </TabList>
             <TabPanels flex="1">
-              <TabPanel h="100%">
-                <PanelGroup direction="vertical">
-                  <Panel defaultSize={70} minSize={20} style={{ paddingBottom: "5px" }}>
-                    <HdlEditor sourceCode={HalfAdderHDL}></HdlEditor>
-                  </Panel>
-                  <PanelResizeHandle style={{ height: "2px", background: "lightgray" }}></PanelResizeHandle>
-                  <Panel defaultSize={30} minSize={20} style={{ paddingTop: "10px" }}>
-                    <TstEditor sourceCode={HalfAdderTST}></TstEditor>
-                  </Panel>
-                </PanelGroup>
-              </TabPanel>
-              <TabPanel></TabPanel>
+              {openFiles.map((f) => (
+                <FileTab fileName={f}></FileTab>
+              ))}
             </TabPanels>
           </Tabs>
         </Panel>

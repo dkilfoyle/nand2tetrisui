@@ -31,9 +31,11 @@
     "lodash": "^4.17.21",
     "ohm-js": "^16.6.0",
     "react": "^18.2.0",
+    "react-arborist": "^3.4.0",
     "react-dom": "^18.2.0",
     "react-resizable-panels": "^2.0.3",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "use-resize-observer": "^9.1.0"
   },
   "devDependencies": {
     "@swc-jotai/react-refresh": "^0.1.0",
