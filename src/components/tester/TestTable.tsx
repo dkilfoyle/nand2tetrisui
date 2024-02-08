@@ -1,7 +1,5 @@
-import { atom, useAtom } from "jotai";
-import { testsAtom } from "../editor/TstEditor";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { chipAtom } from "../editor/HdlEditor";
+import { useAtom } from "jotai";
+import { useCallback, useMemo, useRef } from "react";
 
 import { AgGridReact } from "@ag-grid-community/react";
 import "@ag-grid-community/styles/ag-grid.css";
@@ -10,17 +8,15 @@ import { CellClassParams, ColDef, ModuleRegistry } from "@ag-grid-community/core
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Box } from "@chakra-ui/react";
 import { Bus, HIGH, LOW } from "../editor/grammars/Chip";
-import { IAstTst, IAstTstStatement } from "../editor/grammars/tstInterface";
+import { chipAtom, testsAtom, selectedTestAtom } from "../../store/atoms";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
 type ITest = Record<string, any>;
 
-export const selectedTestAtom = atom<number | null>(null);
-
 export function TestTable() {
-  const [tests, setTests] = useAtom(testsAtom);
-  const [chip, setChip] = useAtom(chipAtom);
+  const [tests] = useAtom(testsAtom);
+  const [chip] = useAtom(chipAtom);
   const [selectedTest, setSelectedTest] = useAtom(selectedTestAtom);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
@@ -125,7 +121,7 @@ export function TestTable() {
       chip.eval();
       setSelectedTest(selectedRows[0].index);
     } else setSelectedTest(null);
-  }, [chip, selectedTest, setSelectedTest]);
+  }, [chip, setSelectedTest]);
 
   return (
     <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">

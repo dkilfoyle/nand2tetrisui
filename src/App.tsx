@@ -10,13 +10,21 @@ import { TestTable } from "./components/tester/TestTable";
 import { FileTree } from "./components/files/FileTree";
 import { useAtom } from "jotai";
 import { FileTab } from "./components/FileTab";
-import { openFilesAtom } from "./store/atoms";
+import { activeTabAtom, openFilesAtom } from "./store/atoms";
+import { useEffect, useState } from "react";
 
 window.g = null;
 window.i = null;
 
 export default function App() {
   const [openFiles] = useAtom(openFilesAtom);
+  const [activeTab, setActiveTab] = useAtom(activeTabAtom);
+  const [tabIndex, setTabIndex] = useState(0);
+
+  useEffect(() => {
+    setTabIndex(openFiles.findIndex((openFile) => openFile == activeTab));
+  }, [activeTab, setTabIndex]);
+
   return (
     <Flex h="100vh" w="100vw" p={3}>
       <PanelGroup direction="horizontal">
@@ -25,10 +33,18 @@ export default function App() {
         </Panel>
         <PanelResizeHandle style={{ width: "2px", background: "lightgray" }}></PanelResizeHandle>
         <Panel defaultSize={50} minSize={20}>
-          <Tabs display="flex" flexDir="column" w="100%" h="100%">
+          <Tabs
+            display="flex"
+            flexDir="column"
+            w="100%"
+            h="100%"
+            index={tabIndex}
+            onChange={(index) => {
+              setActiveTab(openFiles[index]);
+            }}>
             <TabList>
               {openFiles.map((f) => (
-                <Tab>{f}</Tab>
+                <Tab>{f.split("/")[1]}</Tab>
               ))}
             </TabList>
             <TabPanels flex="1">

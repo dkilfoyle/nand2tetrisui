@@ -3,14 +3,12 @@ import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseHdl } from "./grammars/hdlParser";
 import { compileHdl } from "./grammars/hdlCompiler";
-import { Chip } from "./grammars/Chip";
 import { elkAtom } from "../schematic/Schematic";
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import { ELKNode } from "../schematic/elkBuilder";
+import { activeTabAtom, chipAtom } from "../../store/atoms";
 
-export const chipAtom = atom<Chip | undefined>(undefined);
-
-export function HdlEditor({ sourceCode }: { sourceCode: string }) {
+export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
@@ -18,6 +16,7 @@ export function HdlEditor({ sourceCode }: { sourceCode: string }) {
 
   const [elk, setElk] = useAtom(elkAtom);
   const [chip, setChip] = useAtom(chipAtom);
+  const [activeTab] = useAtom(activeTabAtom);
 
   // Add error markers on parse failure
   useEffect(() => {
@@ -26,7 +25,7 @@ export function HdlEditor({ sourceCode }: { sourceCode: string }) {
     const model = editor.current.getModel();
     if (model === null) return;
     monaco.editor.setModelMarkers(model, language, errors);
-    if (errors.length > 0) {
+    if (errors.length > 0 && activeTab == name) {
       setElk({
         id: "0",
         hwMeta: { maxId: 0, bodyText: errors[0].message, name: "error", cls: null },
@@ -39,11 +38,7 @@ export function HdlEditor({ sourceCode }: { sourceCode: string }) {
         },
       } as ELKNode);
     }
-  }, [errors, editor, monaco, language]);
-
-  useEffect(() => {
-    console.log("HdlEditor useEffect: chip", chip);
-  }, [chip]);
+  }, [errors, editor, monaco, language, setElk, activeTab, name]);
 
   const parseAndCompile = useCallback(
     (code: string) => {
@@ -52,15 +47,21 @@ export function HdlEditor({ sourceCode }: { sourceCode: string }) {
       else {
         compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
           setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-          if (compileErrors.length == 0) {
+          if (compileErrors.length == 0 && activeTab == name) {
             setElk(newelk as ELKNode);
             setChip(chip);
           }
         });
       }
     },
-    [setChip, setElk]
+    [activeTab, name, setChip, setElk]
   );
+
+  useEffect(() => {
+    if (editor && editor.current && activeTab == name) {
+      parseAndCompile(editor.current?.getValue());
+    }
+  }, [activeTab, editor, name, parseAndCompile]);
 
   const onMount: OnMount = useCallback(
     (ed) => {
@@ -82,6 +83,7 @@ export function HdlEditor({ sourceCode }: { sourceCode: string }) {
   };
 
   const onValueChange = useCallback(
+    // TODO: Debounce
     (value: string | undefined) => {
       // console.log("here is the current model value:", value);
       if (!value) return;

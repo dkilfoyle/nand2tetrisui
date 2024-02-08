@@ -3,15 +3,12 @@ import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { atom, useAtom } from "jotai";
 import { checkTst, parseTst } from "./grammars/tstParser";
-import { chipAtom } from "./HdlEditor";
 import { IAstTst } from "./grammars/tstInterface";
-import { selectedTestAtom } from "../tester/TestTable";
-
-export const testsAtom = atom<IAstTst | null>(null);
 
 import "./TstEditor.css";
+import { activeTabAtom, chipAtom, selectedTestAtom, testsAtom } from "../../store/atoms";
 
-export function TstEditor({ sourceCode }: { sourceCode: string }) {
+export function TstEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
@@ -20,6 +17,7 @@ export function TstEditor({ sourceCode }: { sourceCode: string }) {
   const [tests, setTests] = useAtom(testsAtom);
   const [chip, setChip] = useAtom(chipAtom);
   const [selectedTest] = useAtom(selectedTestAtom);
+  const [activeTab] = useAtom(activeTabAtom);
 
   //Add error markers on parse failure
   useEffect(() => {
@@ -42,15 +40,21 @@ export function TstEditor({ sourceCode }: { sourceCode: string }) {
         if (chip) {
           const checkErrors = checkTst(ast, chip);
           setErrors(checkErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-          if (checkErrors.length == 0) {
-            console.log("TstEditor setTests:", ast);
+          if (checkErrors.length == 0 && activeTab == name) {
+            // console.log("TstEditor setTests:", ast);
             setTests(ast);
           }
         }
       }
     },
-    [chip, setTests]
+    [activeTab, chip, name, setTests]
   );
+
+  useEffect(() => {
+    if (editor && editor.current && activeTab == name) {
+      parseAndCompile(editor.current?.getValue());
+    }
+  }, [activeTab, editor, name, parseAndCompile]);
 
   useEffect(() => {
     console.log("TstEditor useEffect[chip]", chip);

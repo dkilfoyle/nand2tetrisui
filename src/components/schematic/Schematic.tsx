@@ -2,11 +2,9 @@ import { useEffect, useRef } from "react";
 import { ELKNode } from "./elkBuilder";
 import { atom, useAtom } from "jotai";
 import "d3-hwschematic/dist/d3-hwschematic.css";
-import { selectedTestAtom } from "../tester/TestTable";
-import { chipAtom } from "../editor/HdlEditor";
-import { atomWithImmer } from "jotai-immer";
 
 import "./schematic.css";
+import { chipAtom, selectedTestAtom } from "../../store/atoms";
 
 export const elkAtom = atom<ELKNode>({
   id: "0",
