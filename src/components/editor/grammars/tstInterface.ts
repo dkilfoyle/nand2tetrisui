@@ -20,3 +20,8 @@ export interface IAstTstOperationAssignment {
   index?: number;
   value: number;
 }
+
+export interface IAstTstNumberValue {
+  value: number;
+  span: Span;
+}

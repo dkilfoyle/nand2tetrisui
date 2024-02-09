@@ -1,6 +1,6 @@
-import { EmbeddedActionsParser, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
+import { EmbeddedActionsParser, IToken, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
 import { CompilationError, getTokenSpan, mergeSpans } from "./parserUtils";
-import { IAstTst, IAstTstOperation, IAstTstStatement } from "./tstInterface";
+import { IAstTst, IAstTstNumberValue, IAstTstOperation, IAstTstStatement } from "./tstInterface";
 import { Chip } from "./Chip";
 
 const allTokens: TokenType[] = [];
@@ -31,6 +31,7 @@ addToken({
 });
 
 const IdToken = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9]*/ });
+
 const SetToken = addToken({ name: "Set", pattern: /set/, longer_alt: IdToken });
 const ExpectToken = addToken({ name: "Expect", pattern: /expect/, longer_alt: IdToken });
 const EvalToken = addToken({ name: "Eval", pattern: /eval/, longer_alt: IdToken });
@@ -45,6 +46,9 @@ const RSquareToken = addToken({ name: "RSquare", label: "]", pattern: /\]/ });
 const CommaToken = addToken({ name: "Comma", label: ",", pattern: /,/ });
 const SemiColonToken = addToken({ name: "SemiColon", label: ";", pattern: /;/ });
 const EqualsToken = addToken({ name: "Equals", pattern: /=/ });
+const BinaryToken = addToken({ name: "BinaryToken", pattern: /%B/ });
+const HexToken = addToken({ name: "HexToken", pattern: /%X/ });
+const DecimalToken = addToken({ name: "DecimalToken", pattern: /%D/ });
 const IntegerToken = addToken({ name: "Integer", pattern: /[0-9]+/ });
 allTokens.push(IdToken);
 const tstLexer = new Lexer(allTokens);
@@ -62,6 +66,35 @@ class TstParser extends EmbeddedActionsParser {
       statements.push(statement);
     });
     return { statements };
+  });
+
+  numberValue = this.RULE("numberValue", () => {
+    let val: IAstTstNumberValue | undefined;
+    this.OR([
+      { ALT: () => (val = this.SUBRULE(this.binaryNumber)) },
+      // { ALT: () => (val = this.SUBRULE(this.hexNumber)) },
+      { ALT: () => (val = this.SUBRULE(this.decimalNumber)) },
+    ]);
+    if (val == undefined) throw Error();
+    return val as IAstTstNumberValue;
+  });
+
+  binaryNumber = this.RULE("binaryNumber", () => {
+    const b = this.CONSUME(BinaryToken);
+    let val = "";
+    let digit = b;
+    this.AT_LEAST_ONE(() => {
+      digit = this.CONSUME(IntegerToken); // TODO: Lexer for binary vs integer
+      val += digit.image;
+    });
+    return { value: parseInt(val, 2), span: mergeSpans(getTokenSpan(b), getTokenSpan(digit)) } as IAstTstNumberValue;
+  });
+
+  decimalNumber = this.RULE("decimalNumber", () => {
+    let a: IToken | undefined;
+    this.OPTION(() => (a = this.CONSUME(DecimalToken)));
+    const b = this.CONSUME(IntegerToken);
+    return { value: parseInt(b.image), span: mergeSpans(getTokenSpan(a ?? b), getTokenSpan(b)) };
   });
 
   tstStatement = this.RULE("statement", () => {
@@ -88,11 +121,11 @@ class TstParser extends EmbeddedActionsParser {
     const s = this.CONSUME(SetToken);
     const id = this.CONSUME(IdToken);
     const index = this.OPTION(() => this.SUBRULE(this.index));
-    const value = this.CONSUME(IntegerToken); // todo: binary/hex/dec
+    const val = this.SUBRULE(this.numberValue); // todo: binary/hex/dec
     return {
       opName: "set",
-      assignment: { id: id.image, index, value: parseInt(value.image) },
-      span: mergeSpans(getTokenSpan(s), getTokenSpan(value)),
+      assignment: { id: id.image, index, value: val.value },
+      span: mergeSpans(getTokenSpan(s), val.span),
     } as IAstTstOperation;
   });
 
@@ -100,11 +133,11 @@ class TstParser extends EmbeddedActionsParser {
     const s = this.CONSUME(ExpectToken);
     const id = this.CONSUME(IdToken);
     const index = this.OPTION(() => this.SUBRULE(this.index));
-    const value = this.CONSUME(IntegerToken); // todo: binary/hex/dec
+    const val = this.SUBRULE(this.numberValue); // todo: binary/hex/dec
     return {
       opName: "expect",
-      assignment: { id: id.image, index, value: parseInt(value.image) },
-      span: getTokenSpan(s, value),
+      assignment: { id: id.image, index, value: val.value },
+      span: mergeSpans(getTokenSpan(s), val.span),
     } as IAstTstOperation;
   });
 

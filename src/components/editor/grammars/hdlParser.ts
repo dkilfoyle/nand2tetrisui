@@ -185,7 +185,12 @@ class HdlParser extends EmbeddedActionsParser {
   pinParts = this.RULE("pinParts", () => {
     const name = this.CONSUME(ID);
     const subBus = this.OPTION(() => this.SUBRULE(this.subBus));
-    return { name: name.image, start: subBus?.start, end: subBus?.end, span: mergeSpans(getTokenSpan(name), subBus?.span) } as IAstPinParts;
+    return {
+      name: name.image,
+      start: subBus?.start,
+      end: subBus?.end ?? subBus?.start,
+      span: mergeSpans(getTokenSpan(name), subBus?.span),
+    } as IAstPinParts;
   });
   subBus = this.RULE("subBus", () => {
     const ls = this.CONSUME(LSquare);
