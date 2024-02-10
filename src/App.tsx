@@ -12,6 +12,7 @@ import { useAtom } from "jotai";
 import { FileTab } from "./components/FileTab";
 import { activeTabAtom, openFilesAtom } from "./store/atoms";
 import { useEffect, useState } from "react";
+import { PinTable } from "./components/tester/PinTable";
 
 window.g = null;
 window.i = null;
@@ -44,12 +45,12 @@ export default function App() {
             }}>
             <TabList>
               {openFiles.map((f) => (
-                <Tab>{f.split("/")[1]}</Tab>
+                <Tab key={f}>{f.split("/")[1]}</Tab>
               ))}
             </TabList>
             <TabPanels flex="1">
               {openFiles.map((f) => (
-                <FileTab fileName={f}></FileTab>
+                <FileTab key={f} fileName={f}></FileTab>
               ))}
             </TabPanels>
           </Tabs>
@@ -59,7 +60,20 @@ export default function App() {
         <Panel>
           <PanelGroup direction="vertical">
             <Panel defaultSize={60} minSize={20}>
-              <Schematic></Schematic>
+              <Tabs display="flex" flexDir="column" w="100%" h="100%">
+                <TabList>
+                  <Tab>Schematic</Tab>
+                  <Tab>Pins</Tab>
+                </TabList>
+                <TabPanels flex="1">
+                  <TabPanel h="100%">
+                    <Schematic></Schematic>
+                  </TabPanel>
+                  <TabPanel h="100%">
+                    <PinTable></PinTable>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
             </Panel>
             <PanelResizeHandle style={{ height: "2px", background: "lightgray" }}></PanelResizeHandle>
             <Panel defaultSize={40} minSize={20}>

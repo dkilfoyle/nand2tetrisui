@@ -6,7 +6,10 @@ import { compileHdl } from "./grammars/hdlCompiler";
 import { elkAtom } from "../schematic/Schematic";
 import { useAtom } from "jotai";
 import { ELKNode } from "../schematic/elkBuilder";
-import { activeTabAtom, chipAtom } from "../../store/atoms";
+import { activeTabAtom, chipAtom, selectedPartAtom } from "../../store/atoms";
+import { setAriaSetSize } from "@ag-grid-community/core/dist/esm/es6/utils/aria";
+import { IAstChip } from "./grammars/hdlInterface";
+import { Chip } from "./grammars/Chip";
 
 export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
@@ -16,7 +19,10 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
 
   const [elk, setElk] = useAtom(elkAtom);
   const [chip, setChip] = useAtom(chipAtom);
+  const [selectedPart, setSelectedPart] = useAtom(selectedPartAtom);
+  const selectedPartRef = useRef<number>(-1);
   const [activeTab] = useAtom(activeTabAtom);
+  const [ast, setAst] = useState<IAstChip>();
 
   // Add error markers on parse failure
   useEffect(() => {
@@ -45,11 +51,13 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
       const { ast, parseErrors } = parseHdl(code);
       if (parseErrors.length > 0) setErrors(parseErrors);
       else {
+        setAst(ast);
         compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
           setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
           if (compileErrors.length == 0 && activeTab == name) {
             setElk(newelk as ELKNode);
             setChip(chip);
+            console.log("Chip: ", chip);
           }
         });
       }
@@ -63,24 +71,32 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
     }
   }, [activeTab, editor, name, parseAndCompile]);
 
+  const onChangeCursorPosition = useCallback(
+    (index: number) => {
+      if (index !== undefined && chip && ast) {
+        const i = ast.parts.findIndex((part) => index > part.span.startOffset && index <= part.span.endOffset);
+        if (i >= 0) setSelectedPart([...chip.parts][i]);
+      } else setSelectedPart(undefined);
+    },
+    [ast, chip, setSelectedPart]
+  );
+
+  useEffect(() => {
+    editor.current?.onDidChangeCursorPosition((e) => {
+      const index = editor.current?.getModel()?.getOffsetAt(e.position);
+      if (index) onChangeCursorPosition(index);
+    });
+  }, [chip, setSelectedPart, onChangeCursorPosition]);
+
   const onMount: OnMount = useCallback(
     (ed) => {
       editor.current = ed;
-      editor.current?.onDidChangeCursorPosition((e) => {
-        const index = editor.current?.getModel()?.getOffsetAt(e.position);
-        if (index !== undefined) {
-          onCursorPositionChange?.(index);
-        }
-      });
+
       const value = editor.current.getValue();
       parseAndCompile(value);
     },
     [parseAndCompile]
   );
-
-  const onCursorPositionChange = (index: number) => {
-    // console.log("onCursorPositionChanged: index = ", index);
-  };
 
   const onValueChange = useCallback(
     // TODO: Debounce

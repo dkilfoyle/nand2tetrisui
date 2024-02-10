@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { AgGridReact } from "@ag-grid-community/react";
 import "@ag-grid-community/styles/ag-grid.css";
@@ -8,7 +8,7 @@ import { CellClassParams, ColDef, ModuleRegistry } from "@ag-grid-community/core
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Box } from "@chakra-ui/react";
 import { Bus, HIGH, LOW } from "../editor/grammars/Chip";
-import { chipAtom, testsAtom, selectedTestAtom } from "../../store/atoms";
+import { chipAtom, testsAtom, selectedTestAtom, selectedPartAtom } from "../../store/atoms";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
@@ -18,8 +18,13 @@ export function TestTable() {
   const [tests] = useAtom(testsAtom);
   const [chip] = useAtom(chipAtom);
   const [selectedTest, setSelectedTest] = useAtom(selectedTestAtom);
+  const [selectedPart] = useAtom(selectedPartAtom);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
+
+  useEffect(() => {
+    console.log(selectedPart);
+  }, [selectedPart]);
 
   const pinTable = useMemo(() => {
     if (!tests) return [];
@@ -66,7 +71,7 @@ export function TestTable() {
       row.index = iStatement++;
       rows.push(row);
     }
-    console.log(rows);
+    // console.log(rows);
     return rows;
   }, [tests, chip]);
 
@@ -93,7 +98,7 @@ export function TestTable() {
         ],
       });
     }
-    console.log(defs);
+    // console.log(defs);
     return defs;
   }, [chip]);
 
@@ -117,8 +122,10 @@ export function TestTable() {
       chip?.reset();
       for (const inPin of chip?.ins.entries()) {
         inPin.busVoltage = selectedRows[0][inPin.name];
+        // inPin.pull(selectedRows[0][inPin.name]);
       }
       chip.eval();
+      console.log(chip);
       setSelectedTest(selectedRows[0].index);
     } else setSelectedTest(null);
   }, [chip, setSelectedTest]);

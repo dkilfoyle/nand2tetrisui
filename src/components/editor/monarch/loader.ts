@@ -18,7 +18,6 @@ export async function registerLanguages() {
     languages.setMonarchTokensProvider(id, language);
   }
 
-  console.log("registering completions");
   languages.registerCompletionItemProvider("hdl", {
     provideCompletionItems: (model, position) => {
       const word = model.getWordUntilPosition(position);

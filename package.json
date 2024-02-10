@@ -27,6 +27,7 @@
     "framer-motion": "^10.18.0",
     "immer": "^10.0.3",
     "jotai": "^2.6.4",
+    "jotai-devtools": "^0.7.1",
     "jotai-immer": "^0.3.0",
     "lodash": "^4.17.21",
     "ohm-js": "^16.6.0",

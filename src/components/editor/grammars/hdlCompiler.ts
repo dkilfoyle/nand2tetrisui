@@ -136,7 +136,8 @@ class ChipBuilder {
     this.inPins.clear();
     for (const { lhs, rhs } of part.wires) {
       if (!this.validateWire(partChip, lhs, rhs)) return false;
-      wires.push(createWire(lhs, rhs));
+      const newWire = createWire(lhs, rhs);
+      wires.push(newWire);
     }
     try {
       this.chip.wire(partChip, wires);

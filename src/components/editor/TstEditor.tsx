@@ -34,7 +34,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   const parseAndCompile = useCallback(
     (code: string) => {
       const { ast, parseErrors } = parseTst(code);
-      console.log("tst ast:", ast, chip, parseErrors);
+      // console.log("tst ast:", ast, chip, parseErrors);
       if (parseErrors.length > 0) setErrors(parseErrors);
       else {
         if (chip) {
@@ -57,7 +57,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   }, [activeTab, editor, name, parseAndCompile]);
 
   useEffect(() => {
-    console.log("TstEditor useEffect[chip]", chip);
+    // console.log("TstEditor useEffect[chip]", chip);
     if (editor && editor.current) {
       const value = editor.current.getValue();
       parseAndCompile(value);

@@ -1,0 +1,19 @@
+CHIP BugMux {
+    IN  
+        x[16],
+        zx, // zero the x input?
+        nx; // negate the x input?
+    OUT 
+        out[16]; // 16-bit output
+
+    PARTS:
+    Not16(in=x, out=notx);
+    
+    // select x
+    // zx nx  out
+    // 0  0   x
+    // 0  1   !x
+    // 1  0   0
+    // 1  1   !0 = 1111111111111111 
+    Mux4Way16(a=x, b=notx, c[0..15]=false, d[0..15]=true, sel[1]=zx, sel[0]=nx, out=out);
+}

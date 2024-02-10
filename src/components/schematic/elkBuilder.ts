@@ -1,4 +1,4 @@
-import { Chip, Connection, Pin } from "../editor/grammars/Chip";
+import { Bus, Chip, Connection, Pin } from "../editor/grammars/Chip";
 
 interface ELKEdge {
   id: string;
@@ -91,6 +91,8 @@ export class ElkBuilder {
   partIds: string[] = [];
   maxId = 0;
   idMap = new Map<string, number>();
+  useTrue = false;
+  useFalse = false;
 
   constructor(public chip: Chip) {
     for (const pin of this.chip.ins.entries()) {
@@ -135,14 +137,31 @@ export class ElkBuilder {
         // to=a
         // build a wire from -> to
 
-        this.wires.push({
-          id: `${this.wires.length}`,
-          source: "_ALIAS_",
-          sourcePort: from.name, // to be post-processed to this.ports.get(from.name)
-          target: partId,
-          targetPort: `${partId}_${to.name}`,
-          hwMeta: { name: `${this.chip.name}_${from.name}` },
-        });
+        if (from.name == "true" || from.name == "false") {
+          // Or(a=false)
+          // to = a
+          // from = false
+          if (from.name == "true") this.useTrue = true;
+          if (from.name == "false") this.useFalse = true;
+
+          this.wires.push({
+            id: `${this.wires.length}`,
+            source: `${this.chip.name}_${from.name}node`,
+            sourcePort: `${this.chip.name}_${from.name}`,
+            target: partId,
+            targetPort: `${partId}_${to.name}`,
+            hwMeta: { name: `${this.chip.name}_${from.name}` },
+          });
+        } else {
+          this.wires.push({
+            id: `${this.wires.length}`,
+            source: "_ALIAS_",
+            sourcePort: from.name, // to be post-processed to this.ports.get(from.name)
+            target: partId,
+            targetPort: `${partId}_${to.name}`,
+            hwMeta: { name: `${this.chip.name}_${from.name}` },
+          });
+        }
       }
     }
   }
@@ -217,6 +236,36 @@ export class ElkBuilder {
     };
   }
 
+  constToNode(value: string): ELKNode {
+    const constPin = new Bus(value);
+    constPin.busVoltage = value == "true" ? 1 : 0;
+    return {
+      hwMeta: { cls: null, isExternalPort: true, maxId: 0, name: value },
+      id: `${this.chip.name}_${value}node`,
+      ports: [
+        {
+          id: `${this.chip.name}_${value}`,
+          direction: "OUTPUT",
+          properties: { index: 0, side: "EAST" },
+          hwMeta: {
+            connectedAsParent: false,
+            level: 0,
+            name: value,
+            pin: constPin,
+            cssClass: "chipPortDefault",
+            cssStyle: "border-width:0",
+          },
+          children: [],
+        },
+      ],
+      properties: {
+        "org.eclipse.elk.layered.mergeEdges": 1,
+        "org.eclipse.elk.portConstraints": "FIXED_ORDER",
+      },
+      edges: [],
+    };
+  }
+
   chipToNode(chip: Chip): ELKNode {
     const hwMeta = {
       cls: null,
@@ -229,6 +278,12 @@ export class ElkBuilder {
     [...chip.ins.entries()].forEach((inPin, index) => {
       children.push(this.chipPinToNode(inPin, index, "INPUT"));
     });
+    if (this.useTrue) {
+      children.push(this.constToNode("true"));
+    }
+    if (this.useFalse) {
+      children.push(this.constToNode("false"));
+    }
     [...chip.outs.entries()].forEach((outPin, index) => {
       children.push(this.chipPinToNode(outPin, index, "OUTPUT"));
     });
@@ -250,6 +305,7 @@ export class ElkBuilder {
   }
 
   getELK() {
+    console.log("ELK", this);
     this.wires.forEach((wire) => {
       if (wire.source == "_ALIAS_") {
         wire.hwMeta.name = wire.sourcePort;

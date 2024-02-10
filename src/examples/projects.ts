@@ -1,10 +1,12 @@
 export const sourceCodes = {
+  ...import.meta.glob(["./Debug/*.hdl", "./Debug/*.tst"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project01/*.hdl", "./Project01/*.tst"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project02/*.hdl", "./Project02/*.tst"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project03/*.hdl", "./Project03/*.tst"], { as: "raw", eager: true }),
 };
 
 export const projects = [
+  { id: "Debug", name: "Debug:", children: ["BugMux", "DebugMux"] },
   {
     id: "Project01",
     name: "Project01",
