@@ -57,17 +57,17 @@ export function Schematic() {
   useEffect(() => {
     if (!chip) return;
     if (selectedTest == undefined) return;
-    console.log("selected Test output", selectedTest);
-    for (const pin of chip.outs.entries()) {
-      console.log(pin.name, pin.voltage());
-    }
+    // console.log("selected Test output", selectedTest);
+    // for (const pin of chip.outs.entries()) {
+    //   console.log(pin.name, pin.voltage());
+    // }
     elk.children.forEach((child) => {
       child.ports.forEach((port) => {
         port.hwMeta.cssClass = port.hwMeta.pin.voltage() == 0 ? "portLow" : "portHigh";
       });
     });
     if (hwSchematic.current) {
-      console.log("resetting elk");
+      // console.log("resetting elk");
       hwSchematic.current.bindData(elk).then(
         () => {},
         (e) => {

@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomWithImmer } from "jotai-immer";
 import { Chip } from "../components/editor/grammars/Chip";
 import { IAstTst } from "../components/editor/grammars/tstInterface";
 
@@ -11,9 +12,26 @@ selectedTestAtom.debugLabel = "selectedTest";
 export const selectedPartAtom = atom<Chip | undefined>(undefined);
 selectedPartAtom.debugLabel = "selectedPartAtom";
 
-const defaultFile = "Debug/BugMux";
+const defaultFile = "Project02/ALU";
 
 export const openFilesAtom = atom<string[]>([defaultFile]);
 openFilesAtom.debugLabel = "openFiles";
 export const activeTabAtom = atom<string>(defaultFile);
 activeTabAtom.debugLabel = "activeTab";
+
+interface IPinData {
+  group: string;
+  pinName: string;
+  pinVoltage: number;
+}
+
+export const getPinsData = (chip: Chip): IPinData[] => {
+  const result: IPinData[] = [
+    ...[...chip.ins.entries()].map((pin) => ({ group: "Input", pinName: pin.name, pinVoltage: pin.busVoltage })),
+    ...[...chip.pins.entries()].map((pin) => ({ group: "Internal", pinName: pin.name, pinVoltage: pin.busVoltage })),
+    ...[...chip.outs.entries()].map((pin) => ({ group: "Output", pinName: pin.name, pinVoltage: pin.busVoltage })),
+  ];
+  return result;
+};
+
+export const pinsDataAtom = atom<IPinData[]>([]);

@@ -36,12 +36,14 @@ function createWire(lhs: IAstPinParts, rhs: IAstPinParts): Connection {
     to: {
       name: lhs.name,
       start: lhs.start ?? 0,
-      width: pinWidth(lhs.start ?? 0, lhs.end),
+      width: pinWidth(lhs.start ?? 0, lhs.end), // lhs[0] = x
+      subbed: lhs.start == undefined ? false : true,
     },
     from: {
       name: rhs.name,
       start: rhs.start ?? 0,
       width: pinWidth(rhs.start ?? 0, rhs.end),
+      subbed: rhs.start == undefined ? false : true,
     },
   };
 }

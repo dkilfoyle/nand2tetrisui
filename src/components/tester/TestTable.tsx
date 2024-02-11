@@ -8,7 +8,7 @@ import { CellClassParams, ColDef, ModuleRegistry } from "@ag-grid-community/core
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Box } from "@chakra-ui/react";
 import { Bus, HIGH, LOW } from "../editor/grammars/Chip";
-import { chipAtom, testsAtom, selectedTestAtom, selectedPartAtom } from "../../store/atoms";
+import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData } from "../../store/atoms";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
@@ -17,14 +17,10 @@ type ITest = Record<string, any>;
 export function TestTable() {
   const [tests] = useAtom(testsAtom);
   const [chip] = useAtom(chipAtom);
-  const [selectedTest, setSelectedTest] = useAtom(selectedTestAtom);
-  const [selectedPart] = useAtom(selectedPartAtom);
+  const [, setSelectedTest] = useAtom(selectedTestAtom);
+  const [, setPinsData] = useAtom(pinsDataAtom);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
-
-  useEffect(() => {
-    console.log(selectedPart);
-  }, [selectedPart]);
 
   const pinTable = useMemo(() => {
     if (!tests) return [];
@@ -125,10 +121,10 @@ export function TestTable() {
         // inPin.pull(selectedRows[0][inPin.name]);
       }
       chip.eval();
-      console.log(chip);
+      setPinsData(getPinsData(chip));
       setSelectedTest(selectedRows[0].index);
     } else setSelectedTest(null);
-  }, [chip, setSelectedTest]);
+  }, [chip, setPinsData, setSelectedTest]);
 
   return (
     <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">

@@ -402,7 +402,7 @@ export class Chip {
     from.width ??= chipPin.width;
 
     // Wrap the partPin in an InBus when the part side is dimensioned
-    if (to.start > 0 || to.width !== chipPin.width) {
+    if (to.start > 0 || to.width !== chipPin.width || to.subbed) {
       partPin = new InSubBus(partPin, to.start, to.width);
     }
 
@@ -414,6 +414,8 @@ export class Chip {
     }
 
     chipPin.connect(partPin);
+    console.log("wireInPin: ", to, from);
+    console.log("chipPin -> part input", chipPin, partPin);
   }
 
   eval() {
@@ -494,6 +496,7 @@ export interface PinSide {
   name: string;
   start: number;
   width?: number;
+  subbed: boolean;
 }
 
 export interface Connection {

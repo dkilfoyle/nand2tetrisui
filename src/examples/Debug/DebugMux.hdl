@@ -7,6 +7,6 @@ CHIP DebugMux {
         out[16];
 
     PARTS:
-    Not16(in=y, out=noty);
-    Mux4Way16(a=y, b=noty, c[0..15]=false, d[0..15]=true, sel[1]=zy, sel[0]=ny, out=out);
+    // Not16(in=y, out=noty);
+    Mux4Way16(a=y, b=y, c[0..15]=false, d[0..15]=true, sel[1]=zy, sel[0]=ny, out=out);
 }

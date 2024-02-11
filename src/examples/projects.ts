@@ -6,7 +6,7 @@ export const sourceCodes = {
 };
 
 export const projects = [
-  { id: "Debug", name: "Debug:", children: ["BugMux", "DebugMux"] },
+  { id: "Debug", name: "Debug", children: ["BugMux", "DebugMux"] },
   {
     id: "Project01",
     name: "Project01",

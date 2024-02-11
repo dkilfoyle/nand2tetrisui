@@ -130,7 +130,7 @@ set f  1,
 set no 1,
 eval,
 expect out 1,
-expect zr 1,
+expect zr 0,
 expect ng 0;
 
 // Compute y + 1
@@ -154,8 +154,8 @@ set f  1,
 set no 0,
 eval,
 expect out %B1111111111111111,
-expect zr 1,
-expect ng 0;
+expect zr 0,
+expect ng 1;
 
 // Compute y - 1
 set zx 1,
@@ -166,8 +166,8 @@ set f  1,
 set no 0,
 eval,
 expect out %B1111111111111110,
-expect zr 1,
-expect ng 0;
+expect zr 0,
+expect ng 1;
 
 // Compute x + y
 set zx 0,
@@ -178,8 +178,8 @@ set f  1,
 set no 0,
 eval,
 expect out %B1111111111111111,
-expect zr 1,
-expect ng 0;
+expect zr 0,
+expect ng 1;
 
 // Compute x - y
 set zx 0,
@@ -190,7 +190,7 @@ set f  1,
 set no 1,
 eval,
 expect out 1,
-expect zr 1,
+expect zr 0,
 expect ng 0;
 
 // Compute y - x
@@ -202,8 +202,8 @@ set f  1,
 set no 1,
 eval,
 expect out %B1111111111111111,
-expect zr 1,
-expect ng 0;
+expect zr 0,
+expect ng 1;
 
 // Compute x & y
 set zx 0,
@@ -226,8 +226,8 @@ set f  0,
 set no 1,
 eval,
 expect out %B1111111111111111,
-expect zr 1,
-expect ng 0;
+expect zr 0,
+expect ng 1;
 
 set x %B000000000010001,  // x = 17
 set y %B000000000000011;  // y =  3
@@ -252,8 +252,8 @@ set ny 1,
 set f  1,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
+expect out 1,
+expect zr 0,
 expect ng 0;
 
 // Compute -1
@@ -264,9 +264,9 @@ set ny 0,
 set f  1,
 set no 0,
 eval,
-expect out 0,
-expect zr 1,
-expect ng 0;
+expect out  %B1111111111111111,
+expect zr 0,
+expect ng 1;
 
 // Compute x
 set zx 0,
@@ -276,8 +276,8 @@ set ny 1,
 set f  0,
 set no 0,
 eval,
-expect out 0,
-expect zr 1,
+expect out 17,
+expect zr 0,
 expect ng 0;
 
 // Compute y
@@ -288,8 +288,8 @@ set ny 0,
 set f  0,
 set no 0,
 eval,
-expect out 0,
-expect zr 1,
+expect out 3,
+expect zr 0,
 expect ng 0;
 
 // Compute !x
@@ -300,9 +300,9 @@ set ny 1,
 set f  0,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
-expect ng 0;
+expect out %B1111111111101110,
+expect zr 0,
+expect ng 1;
 
 // Compute !y
 set zx 1,
@@ -312,9 +312,9 @@ set ny 0,
 set f  0,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
-expect ng 0;
+expect out %B1111111111111100,
+expect zr 0,
+expect ng 1;
 
 // Compute -x
 set zx 0,
@@ -324,9 +324,9 @@ set ny 1,
 set f  1,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
-expect ng 0;
+expect out %B1111111111101111,
+expect zr 0,
+expect ng 1;
 
 // Compute -y
 set zx 1,
@@ -336,9 +336,9 @@ set ny 0,
 set f  1,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
-expect ng 0;
+expect out %B1111111111111101,
+expect zr 0,
+expect ng 1;
 
 // Compute x + 1
 set zx 0,
@@ -348,8 +348,8 @@ set ny 1,
 set f  1,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
+expect out %B0000000000010010,
+expect zr 0,
 expect ng 0;
 
 // Compute y + 1
@@ -360,8 +360,8 @@ set ny 1,
 set f  1,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
+expect out %B0000000000000100,
+expect zr 0,
 expect ng 0;
 
 // Compute x - 1
@@ -372,8 +372,8 @@ set ny 1,
 set f  1,
 set no 0,
 eval,
-expect out 0,
-expect zr 1,
+expect out %B0000000000010000,
+expect zr 0,
 expect ng 0;
 
 // Compute y - 1
@@ -384,8 +384,8 @@ set ny 0,
 set f  1,
 set no 0,
 eval,
-expect out 0,
-expect zr 1,
+expect out %B0000000000000010,
+expect zr 0,
 expect ng 0;
 
 // Compute x + y
@@ -396,8 +396,8 @@ set ny 0,
 set f  1,
 set no 0,
 eval,
-expect out 0,
-expect zr 1,
+expect out %B0000000000010100,
+expect zr 0,
 expect ng 0;
 
 // Compute x - y
@@ -408,8 +408,8 @@ set ny 0,
 set f  1,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
+expect out %B0000000000001110,
+expect zr 0,
 expect ng 0;
 
 // Compute y - x
@@ -420,9 +420,9 @@ set ny 1,
 set f  1,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
-expect ng 0;
+expect out %B1111111111110010,
+expect zr 0,
+expect ng 1;
 
 // Compute x & y
 set zx 0,
@@ -432,8 +432,8 @@ set ny 0,
 set f  0,
 set no 0,
 eval,
-expect out 0,
-expect zr 1,
+expect out %B0000000000000001,
+expect zr 0,
 expect ng 0;
 
 // Compute x | y
@@ -444,6 +444,6 @@ set ny 1,
 set f  0,
 set no 1,
 eval,
-expect out 0,
-expect zr 1,
+expect out %B0000000000010011,
+expect zr 0,
 expect ng 0;

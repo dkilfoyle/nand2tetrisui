@@ -52,12 +52,11 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
       if (parseErrors.length > 0) setErrors(parseErrors);
       else {
         setAst(ast);
-        compileHdl(ast).then(({ chip, compileErrors, elk: newelk }) => {
+        compileHdl(ast).then(({ chip: newchip, compileErrors, elk: newelk }) => {
           setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
           if (compileErrors.length == 0 && activeTab == name) {
             setElk(newelk as ELKNode);
-            setChip(chip);
-            console.log("Chip: ", chip);
+            setChip(newchip);
           }
         });
       }
@@ -76,6 +75,7 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
       if (index !== undefined && chip && ast) {
         const i = ast.parts.findIndex((part) => index > part.span.startOffset && index <= part.span.endOffset);
         if (i >= 0) setSelectedPart([...chip.parts][i]);
+        else setSelectedPart(chip);
       } else setSelectedPart(undefined);
     },
     [ast, chip, setSelectedPart]
