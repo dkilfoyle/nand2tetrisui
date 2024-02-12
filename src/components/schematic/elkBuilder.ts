@@ -176,7 +176,7 @@ export class ElkBuilder {
     const hwMeta = {
       cls: "Operator",
       maxId: 100000,
-      name: part.name.toUpperCase(),
+      name: part.name.startsWith("Mux") ? "MUX" : part.name.toUpperCase(),
       // isExternalPort: false,
     };
     const id = this.getElkId(partId);
@@ -186,7 +186,7 @@ export class ElkBuilder {
       ports.push({
         id: this.getElkId(pinId),
         direction: "INPUT",
-        properties: { index, side: part.name.startsWith("Mux") && inPin.name == "sel" ? "SOUTH" : "WEST" },
+        properties: part.name.startsWith("Mux") && inPin.name == "sel" ? { index: 0, side: "SOUTH" } : { index, side: "WEST" },
         hwMeta: { name: inPin.name, connectedAsParent: false, level: 0, pin: inPin, cssClass: "inPortDefault", cssStyle: "border-width:0" },
         children: [],
       });
