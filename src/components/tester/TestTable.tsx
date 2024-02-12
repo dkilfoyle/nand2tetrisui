@@ -8,7 +8,7 @@ import { CellClassParams, ColDef, ModuleRegistry } from "@ag-grid-community/core
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Box } from "@chakra-ui/react";
 import { Bus, HIGH, LOW } from "../editor/grammars/Chip";
-import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData } from "../../store/atoms";
+import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom } from "../../store/atoms";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
@@ -17,6 +17,7 @@ type ITest = Record<string, any>;
 export function TestTable() {
   const [tests] = useAtom(testsAtom);
   const [chip] = useAtom(chipAtom);
+  const [selectedPart] = useAtom(selectedPartAtom);
   const [, setSelectedTest] = useAtom(selectedTestAtom);
   const [, setPinsData] = useAtom(pinsDataAtom);
 
@@ -26,12 +27,12 @@ export function TestTable() {
     if (!tests) return [];
     if (!chip) return [];
     // const inputValues = new Map<string, number>(); // keep track of input pin assigned values
-    const rows: Record<string, number | undefined>[] = [];
+    const rows: Record<string, number | undefined | string>[] = [];
     chip.reset();
 
     let iStatement = 0;
     for (const testStatement of tests.statements) {
-      const row: Record<string, number | undefined | { result: number; correct: boolean }> = {};
+      const row: Record<string, number | undefined | { result: number; correct: boolean } | string> = {};
       for (const inPin of chip?.ins.entries()) {
         row[inPin.name] = undefined;
       }
@@ -61,6 +62,8 @@ export function TestTable() {
           }
         } else if (testOperation.opName == "expect") {
           row[testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
+        } else if (testOperation.opName == "note") {
+          row.note = testOperation.note;
         }
       }
 
@@ -94,6 +97,7 @@ export function TestTable() {
         ],
       });
     }
+    defs.push({ field: "note" });
     // console.log(defs);
     return defs;
   }, [chip]);
@@ -121,10 +125,10 @@ export function TestTable() {
         // inPin.pull(selectedRows[0][inPin.name]);
       }
       chip.eval();
-      setPinsData(getPinsData(chip));
+      setPinsData(getPinsData(selectedPart || chip));
       setSelectedTest(selectedRows[0].index);
     } else setSelectedTest(null);
-  }, [chip, setPinsData, setSelectedTest]);
+  }, [chip, selectedPart, setPinsData, setSelectedTest]);
 
   return (
     <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">

@@ -14,13 +14,14 @@ import { Chip } from "./grammars/Chip";
 export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
+  const cursorEvent = useRef<monacoT.IDisposable>();
+
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
   const language = "hdl";
 
   const [elk, setElk] = useAtom(elkAtom);
   const [chip, setChip] = useAtom(chipAtom);
   const [selectedPart, setSelectedPart] = useAtom(selectedPartAtom);
-  const selectedPartRef = useRef<number>(-1);
   const [activeTab] = useAtom(activeTabAtom);
   const [ast, setAst] = useState<IAstChip>();
 
@@ -71,8 +72,9 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
   }, [activeTab, editor, name, parseAndCompile]);
 
   const onChangeCursorPosition = useCallback(
-    (index: number) => {
-      if (index !== undefined && chip && ast) {
+    (e: monacoT.editor.ICursorPositionChangedEvent) => {
+      const index = editor.current?.getModel()?.getOffsetAt(e.position);
+      if (index !== undefined && ast && chip) {
         const i = ast.parts.findIndex((part) => index > part.span.startOffset && index <= part.span.endOffset);
         if (i >= 0) setSelectedPart([...chip.parts][i]);
         else setSelectedPart(chip);
@@ -82,16 +84,13 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
   );
 
   useEffect(() => {
-    editor.current?.onDidChangeCursorPosition((e) => {
-      const index = editor.current?.getModel()?.getOffsetAt(e.position);
-      if (index) onChangeCursorPosition(index);
-    });
-  }, [chip, setSelectedPart, onChangeCursorPosition]);
+    if (cursorEvent.current) cursorEvent?.current.dispose();
+    cursorEvent.current = editor?.current?.onDidChangeCursorPosition(onChangeCursorPosition);
+  }, [onChangeCursorPosition]);
 
   const onMount: OnMount = useCallback(
     (ed) => {
       editor.current = ed;
-
       const value = editor.current.getValue();
       parseAndCompile(value);
     },

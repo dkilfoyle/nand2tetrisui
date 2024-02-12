@@ -1,19 +1,8 @@
-// This file is part of www.nand2tetris.org
-// and the book "The Elements of Computing Systems"
-// by Nisan and Schocken, MIT Press.
-// File name: projects/02/ALU.tst
-
-// load ALU.hdl,
-// output-file ALU.out,
-// compare-to ALU.cmp,
-// output-list x%B1.16.1 y%B1.16.1 zx%B1.1.1 nx%B1.1.1 zy%B1.1.1 
-//             ny%B1.1.1 f%B1.1.1 no%B1.1.1 out%B1.16.1 zr%B1.1.1
-//             ng%B1.1.1;
-
+note "Set x=0, y=-1",
 set x %B0000000000000000,  // x = 0
 set y %B1111111111111111;  // y = -1
 
-// Compute 0
+note "Compute 0",
 set nx 0,
 set zx 1,
 set ny 0,
@@ -25,7 +14,7 @@ expect out 0,
 expect zr 1,
 expect ng 0;
 
-// Compute 1
+note "Compute 1",
 set nx 1,
 set zx 1,
 set ny 1,
@@ -37,7 +26,7 @@ expect out 1,
 expect zr 0,
 expect ng 0;
 
-// Compute -1
+note "Compute -1",
 set nx 1,
 set zx 1,
 set ny 0,
@@ -49,7 +38,7 @@ expect out %B1111111111111111,
 expect zr 0,
 expect ng 1;
 
-// Compute x
+note "Compute x",
 set nx 0,
 set zx 0,
 set ny 1,
@@ -61,7 +50,7 @@ expect out 0,
 expect zr 1,
 expect ng 0;
 
-// Compute y
+note "Compute y",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -73,7 +62,7 @@ expect out %B1111111111111111,
 expect zr 0,
 expect ng 1;
 
-// Compute !x
+note "Compute !x",
 set zx 0,
 set nx 0,
 set zy 1,
@@ -85,7 +74,7 @@ expect out %B1111111111111111,
 expect zr 0,
 expect ng 1;
 
-// Compute !y
+note "Compute !y",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -97,7 +86,7 @@ expect out 0,
 expect zr 1,
 expect ng 0;
 
-// Compute -x
+note "Compute -x",
 set zx 0,
 set nx 0,
 set zy 1,
@@ -109,7 +98,7 @@ expect out 0,
 expect zr 1,
 expect ng 0;
 
-// Compute -y
+note "Compute -y",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -121,7 +110,7 @@ expect out 1,
 expect zr 0,
 expect ng 0;
 
-// Compute x + 1
+note "Compute x + 1",
 set zx 0,
 set nx 1,
 set zy 1,
@@ -133,7 +122,7 @@ expect out 1,
 expect zr 0,
 expect ng 0;
 
-// Compute y + 1
+note "Compute y + 1",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -145,7 +134,7 @@ expect out 0,
 expect zr 1,
 expect ng 0;
 
-// Compute x - 1
+note "Compute x - 1",
 set zx 0,
 set nx 0,
 set zy 1,
@@ -157,7 +146,7 @@ expect out %B1111111111111111,
 expect zr 0,
 expect ng 1;
 
-// Compute y - 1
+note "Compute y - 1",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -169,7 +158,7 @@ expect out %B1111111111111110,
 expect zr 0,
 expect ng 1;
 
-// Compute x + y
+note "Compute x + y",
 set zx 0,
 set nx 0,
 set zy 0,
@@ -181,7 +170,7 @@ expect out %B1111111111111111,
 expect zr 0,
 expect ng 1;
 
-// Compute x - y
+note "Compute x - y",
 set zx 0,
 set nx 1,
 set zy 0,
@@ -193,7 +182,7 @@ expect out 1,
 expect zr 0,
 expect ng 0;
 
-// Compute y - x
+note "Compute y - x",
 set zx 0,
 set nx 0,
 set zy 0,
@@ -205,7 +194,7 @@ expect out %B1111111111111111,
 expect zr 0,
 expect ng 1;
 
-// Compute x & y
+note "Compute x & y",
 set zx 0,
 set nx 0,
 set zy 0,
@@ -217,7 +206,7 @@ expect out 0,
 expect zr 1,
 expect ng 0;
 
-// Compute x | y
+note "Compute x | y",
 set zx 0,
 set nx 1,
 set zy 0,
@@ -229,10 +218,11 @@ expect out %B1111111111111111,
 expect zr 0,
 expect ng 1;
 
+note "set x=17, y=3",
 set x %B000000000010001,  // x = 17
 set y %B000000000000011;  // y =  3
 
-// Compute 0
+note "Compute 0",
 set zx 1,
 set nx 0,
 set zy 1,
@@ -244,7 +234,7 @@ expect out 0,
 expect zr 1,
 expect ng 0;
 
-// Compute 1
+note "Compute 1",
 set zx 1,
 set nx 1,
 set zy 1,
@@ -256,7 +246,7 @@ expect out 1,
 expect zr 0,
 expect ng 0;
 
-// Compute -1
+note "Compute -1",
 set zx 1,
 set nx 1,
 set zy 1,
@@ -268,7 +258,7 @@ expect out  %B1111111111111111,
 expect zr 0,
 expect ng 1;
 
-// Compute x
+note "Compute x",
 set zx 0,
 set nx 0,
 set zy 1,
@@ -280,7 +270,7 @@ expect out 17,
 expect zr 0,
 expect ng 0;
 
-// Compute y
+note "Compute y",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -292,7 +282,7 @@ expect out 3,
 expect zr 0,
 expect ng 0;
 
-// Compute !x
+note "Compute !x",
 set zx 0,
 set nx 0,
 set zy 1,
@@ -304,7 +294,7 @@ expect out %B1111111111101110,
 expect zr 0,
 expect ng 1;
 
-// Compute !y
+note "Compute !y",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -316,7 +306,7 @@ expect out %B1111111111111100,
 expect zr 0,
 expect ng 1;
 
-// Compute -x
+note "Compute -x",
 set zx 0,
 set nx 0,
 set zy 1,
@@ -328,7 +318,7 @@ expect out %B1111111111101111,
 expect zr 0,
 expect ng 1;
 
-// Compute -y
+note "Compute -y",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -340,7 +330,7 @@ expect out %B1111111111111101,
 expect zr 0,
 expect ng 1;
 
-// Compute x + 1
+note "Compute x + 1",
 set zx 0,
 set nx 1,
 set zy 1,
@@ -352,7 +342,7 @@ expect out %B0000000000010010,
 expect zr 0,
 expect ng 0;
 
-// Compute y + 1
+note "Compute y + 1",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -364,7 +354,7 @@ expect out %B0000000000000100,
 expect zr 0,
 expect ng 0;
 
-// Compute x - 1
+note "Compute x - 1",
 set zx 0,
 set nx 0,
 set zy 1,
@@ -376,7 +366,7 @@ expect out %B0000000000010000,
 expect zr 0,
 expect ng 0;
 
-// Compute y - 1
+note "Compute y - 1",
 set zx 1,
 set nx 1,
 set zy 0,
@@ -388,7 +378,7 @@ expect out %B0000000000000010,
 expect zr 0,
 expect ng 0;
 
-// Compute x + y
+note "Compute x + y",
 set zx 0,
 set nx 0,
 set zy 0,
@@ -400,7 +390,7 @@ expect out %B0000000000010100,
 expect zr 0,
 expect ng 0;
 
-// Compute x - y
+note "Compute x - y",
 set zx 0,
 set nx 1,
 set zy 0,
@@ -412,7 +402,7 @@ expect out %B0000000000001110,
 expect zr 0,
 expect ng 0;
 
-// Compute y - x
+note "Compute y - x",
 set zx 0,
 set nx 0,
 set zy 0,
@@ -424,7 +414,7 @@ expect out %B1111111111110010,
 expect zr 0,
 expect ng 1;
 
-// Compute x & y
+note "Compute x & y",
 set zx 0,
 set nx 0,
 set zy 0,
@@ -436,7 +426,7 @@ expect out %B0000000000000001,
 expect zr 0,
 expect ng 0;
 
-// Compute x | y
+note "Compute x | y",
 set zx 0,
 set nx 1,
 set zy 0,

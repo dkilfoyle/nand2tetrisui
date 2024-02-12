@@ -35,6 +35,8 @@ const IdToken = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9]*/ });
 const SetToken = addToken({ name: "Set", pattern: /set/, longer_alt: IdToken });
 const ExpectToken = addToken({ name: "Expect", pattern: /expect/, longer_alt: IdToken });
 const EvalToken = addToken({ name: "Eval", pattern: /eval/, longer_alt: IdToken });
+const NoteToken = addToken({ name: "Note", pattern: /note/, longer_alt: IdToken });
+const StringToken = addToken({ name: "String", pattern: /"[^<"]*"|'[^<']*'/ });
 const FalseToken = addToken({ name: "True", pattern: /true/, longer_alt: IdToken });
 const TrueToken = addToken({ name: "False", pattern: /false/, longer_alt: IdToken });
 const LCurlyToken = addToken({ name: "LCurly", label: "{", pattern: /{/ });
@@ -113,8 +115,19 @@ class TstParser extends EmbeddedActionsParser {
       { ALT: () => (op = this.SUBRULE(this.tstSetOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstExpectOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstEvalOperation)) },
+      { ALT: () => (op = this.SUBRULE(this.tstNoteOperation)) },
     ]);
     return op;
+  });
+
+  tstNoteOperation = this.RULE("tstNoteOperation", () => {
+    const nt = this.CONSUME(NoteToken);
+    const str = this.CONSUME(StringToken);
+    return {
+      opName: "note",
+      note: str.image.substring(1, str.image.length - 1),
+      span: getTokenSpan(nt, str),
+    };
   });
 
   tstSetOperation = this.RULE("tstSetOperation", () => {

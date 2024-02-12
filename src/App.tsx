@@ -35,6 +35,8 @@ export default function App() {
         <PanelResizeHandle style={{ width: "2px", background: "lightgray" }}></PanelResizeHandle>
         <Panel defaultSize={50} minSize={20}>
           <Tabs
+            variant="enclosed"
+            size="md"
             display="flex"
             flexDir="column"
             w="100%"

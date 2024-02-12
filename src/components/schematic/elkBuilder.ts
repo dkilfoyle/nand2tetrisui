@@ -28,7 +28,7 @@ interface ELKPort {
 
 export interface ELKNode {
   edges: ELKEdge[];
-  children: ELKNode[];
+  children: ELKNode[] | undefined;
   ports: ELKPort[];
   id: string;
   hwMeta: {
@@ -175,9 +175,9 @@ export class ElkBuilder {
   partToNode = (part: Chip, partId: string): ELKNode => {
     const hwMeta = {
       cls: "Operator",
-      maxId: 0,
+      maxId: 100000,
       name: part.name.toUpperCase(),
-      isExternalPort: false,
+      // isExternalPort: false,
     };
     const id = this.getElkId(partId);
     const ports: ELKPort[] = [];
@@ -186,7 +186,7 @@ export class ElkBuilder {
       ports.push({
         id: this.getElkId(pinId),
         direction: "INPUT",
-        properties: { index, side: "WEST" },
+        properties: { index, side: part.name.startsWith("Mux") && inPin.name == "sel" ? "SOUTH" : "WEST" },
         hwMeta: { name: inPin.name, connectedAsParent: false, level: 0, pin: inPin, cssClass: "inPortDefault", cssStyle: "border-width:0" },
         children: [],
       });
@@ -210,7 +210,7 @@ export class ElkBuilder {
         "org.eclipse.elk.portConstraints": "FIXED_ORDER",
       },
       edges: [],
-      children: [],
+      children: undefined,
     };
   };
 

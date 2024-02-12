@@ -414,8 +414,8 @@ export class Chip {
     }
 
     chipPin.connect(partPin);
-    console.log("wireInPin: ", to, from);
-    console.log("chipPin -> part input", chipPin, partPin);
+    // console.log("wireInPin: ", to, from);
+    // console.log("chipPin -> part input", chipPin, partPin);
   }
 
   eval() {
