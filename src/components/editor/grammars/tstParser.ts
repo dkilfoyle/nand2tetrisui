@@ -1,7 +1,7 @@
 import { EmbeddedActionsParser, IToken, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
-import { CompilationError, getTokenSpan, mergeSpans } from "./parserUtils";
+import { getTokenSpan, mergeSpans } from "./parserUtils";
 import { IAstTst, IAstTstNumberValue, IAstTstOperation, IAstTstStatement } from "./tstInterface";
-import { Chip } from "./Chip";
+import { Chip } from "../simulator/Chip";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {
@@ -31,25 +31,26 @@ addToken({
 });
 
 const IdToken = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9]*/ });
+const KeywordTokens = ["set", "expect", "eval", "note", "output", "tick", "tock"].reduce((keywordDict: Record<string, TokenType>, keyword) => {
+  const t = addToken({ name: keyword, pattern: RegExp(keyword), longer_alt: IdToken });
+  keywordDict[keyword] = t;
+  return keywordDict;
+}, {});
 
-const SetToken = addToken({ name: "Set", pattern: /set/, longer_alt: IdToken });
-const ExpectToken = addToken({ name: "Expect", pattern: /expect/, longer_alt: IdToken });
-const EvalToken = addToken({ name: "Eval", pattern: /eval/, longer_alt: IdToken });
-const NoteToken = addToken({ name: "Note", pattern: /note/, longer_alt: IdToken });
 const StringToken = addToken({ name: "String", pattern: /"[^<"]*"|'[^<']*'/ });
-const FalseToken = addToken({ name: "True", pattern: /true/, longer_alt: IdToken });
-const TrueToken = addToken({ name: "False", pattern: /false/, longer_alt: IdToken });
-const LCurlyToken = addToken({ name: "LCurly", label: "{", pattern: /{/ });
-const RCurlyToken = addToken({ name: "RCurly", label: "}", pattern: /}/ });
-const LParenToken = addToken({ name: "LParen", label: "(", pattern: /\(/ });
-const RParenToken = addToken({ name: "RParen", label: ")", pattern: /\)/ });
+// const FalseToken = addToken({ name: "True", pattern: /true/, longer_alt: IdToken });
+// const TrueToken = addToken({ name: "False", pattern: /false/, longer_alt: IdToken });
+// const LCurlyToken = addToken({ name: "LCurly", label: "{", pattern: /{/ });
+// const RCurlyToken = addToken({ name: "RCurly", label: "}", pattern: /}/ });
+// const LParenToken = addToken({ name: "LParen", label: "(", pattern: /\(/ });
+// const RParenToken = addToken({ name: "RParen", label: ")", pattern: /\)/ });
 const LSquareToken = addToken({ name: "LSquare", label: "[", pattern: /\[/ });
 const RSquareToken = addToken({ name: "RSquare", label: "]", pattern: /\]/ });
 const CommaToken = addToken({ name: "Comma", label: ",", pattern: /,/ });
 const SemiColonToken = addToken({ name: "SemiColon", label: ";", pattern: /;/ });
-const EqualsToken = addToken({ name: "Equals", pattern: /=/ });
+// const EqualsToken = addToken({ name: "Equals", pattern: /=/ });
 const BinaryToken = addToken({ name: "BinaryToken", pattern: /%B/ });
-const HexToken = addToken({ name: "HexToken", pattern: /%X/ });
+// const HexToken = addToken({ name: "HexToken", pattern: /%X/ });
 const DecimalToken = addToken({ name: "DecimalToken", pattern: /%D/ });
 const IntegerToken = addToken({ name: "Integer", pattern: /[0-9]+/ });
 allTokens.push(IdToken);
@@ -109,19 +110,32 @@ class TstParser extends EmbeddedActionsParser {
     return { operations, span: mergeSpans(operations[0].span, operations[operations.length - 1].span) };
   });
 
-  tstOperation = this.RULE("tstOperation", () => {
-    let op: IAstTstOperation;
+  tstOperation = this.RULE("tstOperation", (): IAstTstOperation => {
+    let op: IAstTstOperation | undefined;
     this.OR([
       { ALT: () => (op = this.SUBRULE(this.tstSetOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstExpectOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstEvalOperation)) },
+      { ALT: () => (op = this.SUBRULE(this.tstClockOperation)) },
+      { ALT: () => (op = this.SUBRULE(this.tstOutputOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstNoteOperation)) },
     ]);
-    return op;
+    return op!;
   });
 
-  tstNoteOperation = this.RULE("tstNoteOperation", () => {
-    const nt = this.CONSUME(NoteToken);
+  tstClockOperation = this.RULE("tstClockOperation", () => {
+    let ticktock: IToken;
+    this.OR([{ ALT: () => (ticktock = this.CONSUME(KeywordTokens.tick)) }, { ALT: () => (ticktock = this.CONSUME(KeywordTokens.tock)) }]);
+    return { opName: ticktock!.image, span: getTokenSpan(ticktock!) };
+  });
+
+  tstOutputOperation = this.RULE("tstOutputOperation", () => {
+    const o = this.CONSUME(KeywordTokens.output);
+    return { opName: "output", span: getTokenSpan(o) };
+  });
+
+  tstNoteOperation = this.RULE("tstNoteOperation", (): IAstTstOperation => {
+    const nt = this.CONSUME(KeywordTokens.note);
     const str = this.CONSUME(StringToken);
     return {
       opName: "note",
@@ -130,8 +144,8 @@ class TstParser extends EmbeddedActionsParser {
     };
   });
 
-  tstSetOperation = this.RULE("tstSetOperation", () => {
-    const s = this.CONSUME(SetToken);
+  tstSetOperation = this.RULE("tstSetOperation", (): IAstTstOperation => {
+    const s = this.CONSUME(KeywordTokens.set);
     const id = this.CONSUME(IdToken);
     const index = this.OPTION(() => this.SUBRULE(this.index));
     const val = this.SUBRULE(this.numberValue); // todo: binary/hex/dec
@@ -139,11 +153,11 @@ class TstParser extends EmbeddedActionsParser {
       opName: "set",
       assignment: { id: id.image, index, value: val.value },
       span: mergeSpans(getTokenSpan(s), val.span),
-    } as IAstTstOperation;
+    };
   });
 
-  tstExpectOperation = this.RULE("tstExpectOperation", () => {
-    const s = this.CONSUME(ExpectToken);
+  tstExpectOperation = this.RULE("tstExpectOperation", (): IAstTstOperation => {
+    const s = this.CONSUME(KeywordTokens.expect);
     const id = this.CONSUME(IdToken);
     const index = this.OPTION(() => this.SUBRULE(this.index));
     const val = this.SUBRULE(this.numberValue); // todo: binary/hex/dec
@@ -151,15 +165,15 @@ class TstParser extends EmbeddedActionsParser {
       opName: "expect",
       assignment: { id: id.image, index, value: val.value },
       span: mergeSpans(getTokenSpan(s), val.span),
-    } as IAstTstOperation;
+    };
   });
 
-  tstEvalOperation = this.RULE("tstEvalOperation", () => {
-    const e = this.CONSUME(EvalToken);
+  tstEvalOperation = this.RULE("tstEvalOperation", (): IAstTstOperation => {
+    const e = this.CONSUME(KeywordTokens.eval);
     return {
       opName: "eval",
       span: getTokenSpan(e),
-    } as IAstTstOperation;
+    };
   });
 
   index = this.RULE("index", () => {

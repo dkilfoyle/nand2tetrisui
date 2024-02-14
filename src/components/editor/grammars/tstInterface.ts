@@ -10,7 +10,7 @@ export interface IAstTstStatement {
 }
 
 export interface IAstTstOperation {
-  opName: "set" | "expect" | "eval" | "note";
+  opName: string;
   assignment?: IAstTstOperationAssignment;
   note?: string;
   span: Span;

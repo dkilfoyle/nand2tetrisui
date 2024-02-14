@@ -1,5 +1,4 @@
 // import { useEffect, useState } from "react";
-import { HdlEditor } from "./components/editor/HdlEditor";
 import { Flex, Tab, TabList, TabPanel, TabPanels, Tabs } from "@chakra-ui/react";
 import { registerLanguages } from "./components/editor/monarch/loader";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";

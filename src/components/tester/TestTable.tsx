@@ -7,8 +7,10 @@ import "@ag-grid-community/styles/ag-theme-quartz.css";
 import { CellClassParams, ColDef, ModuleRegistry } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Box } from "@chakra-ui/react";
-import { Bus, HIGH, LOW } from "../editor/grammars/Chip";
-import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom } from "../../store/atoms";
+import { Bus, HIGH, LOW } from "../editor/simulator/Chip";
+import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom, activeTabAtom } from "../../store/atoms";
+import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
+import { sourceCodes } from "../../examples/projects";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
@@ -20,8 +22,31 @@ export function TestTable() {
   const [selectedPart] = useAtom(selectedPartAtom);
   const [, setSelectedTest] = useAtom(selectedTestAtom);
   const [, setPinsData] = useAtom(pinsDataAtom);
+  const [activeTab] = useAtom(activeTabAtom);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
+
+  const compareRows = useMemo(() => {
+    if (!chip) return [];
+    const cmp = sourceCodes["./" + activeTab + ".cmp"];
+    if (!cmp) return [];
+    const cmpLines = cmp.split("\n");
+    const names = cmpLines[0]
+      .split("|")
+      .slice(1, -1)
+      .map((x) => x.trimStart().trimEnd());
+    return cmpLines.slice(1).map((line) => {
+      const row: Record<string, number> = {};
+      const vals = line
+        .split("|")
+        .slice(1, -1)
+        .map((x) => x.trimStart().trimEnd());
+      names.forEach((name, i) => {
+        row[name] = parseInt(vals[i]);
+      });
+      return row;
+    });
+  }, [chip]);
 
   const pinTable = useMemo(() => {
     if (!tests) return [];
@@ -29,8 +54,11 @@ export function TestTable() {
     // const inputValues = new Map<string, number>(); // keep track of input pin assigned values
     const rows: Record<string, number | undefined | string>[] = [];
     chip.reset();
+    const clock = Clock.get();
+    clock.reset();
 
     let iStatement = 0;
+
     for (const testStatement of tests.statements) {
       const row: Record<string, number | undefined | { result: number; correct: boolean } | string> = {};
       for (const inPin of chip?.ins.entries()) {
@@ -60,6 +88,27 @@ export function TestTable() {
           for (const outPin of chip.outs.entries()) {
             row[outPin.name] = outPin.busVoltage;
           }
+        } else if (testOperation.opName == "output") {
+          for (const inPin of chip.ins.entries()) {
+            row[inPin.name] = inPin.busVoltage;
+          }
+          for (const outPin of chip.outs.entries()) {
+            row[outPin.name] = outPin.busVoltage;
+          }
+          if (compareRows.length > iStatement) {
+            const cmpRow = compareRows[iStatement];
+            Object.entries(cmpRow).forEach(([key, val]) => {
+              row[key + "_e"] = val;
+            });
+          }
+        } else if (testOperation.opName == "tick") {
+          chip.eval();
+          clock.tick();
+          row["time"] = clock.toString();
+        } else if (testOperation.opName == "tock") {
+          chip.eval();
+          clock.tock();
+          row["time"] = clock.toString();
         } else if (testOperation.opName == "expect") {
           row[testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
         } else if (testOperation.opName == "note") {
@@ -77,6 +126,7 @@ export function TestTable() {
   const colDefs = useMemo<ColDef[]>(() => {
     const defs = [];
     if (!chip) return [];
+    if (chip.clocked) defs.push({ field: "time", width: 50 });
     for (const inPin of chip?.ins.entries()) {
       defs.push({ field: inPin.name, width: 50 });
     }

@@ -1,26 +1,21 @@
-interface IChip {
+interface IBuiltinChip {
   name: string;
   documentation?: string;
   inputs: { name: string; width: number }[];
   outputs: { name: string; width: number }[];
 }
 
-interface IPin {
-  name: string;
-  width: number;
-}
+// export class Chip {
+//   constructor(public name: string, public inputs: IPin[], public outputs: IPin[]) {}
+//   isInPin(pinName: string) {
+//     return this.inputs.find((input) => input.name == pinName);
+//   }
+//   isOutPin(pinName: string) {
+//     return this.outputs.find((output) => output.name == pinName);
+//   }
+// }
 
-export class Chip {
-  constructor(public name: string, public inputs: IPin[], public outputs: IPin[]) {}
-  isInPin(pinName: string) {
-    return this.inputs.find((input) => input.name == pinName);
-  }
-  isOutPin(pinName: string) {
-    return this.outputs.find((output) => output.name == pinName);
-  }
-}
-
-export const builtinChips: IChip[] = [
+export const builtinChips: IBuiltinChip[] = [
   {
     name: "Not16",
     inputs: [

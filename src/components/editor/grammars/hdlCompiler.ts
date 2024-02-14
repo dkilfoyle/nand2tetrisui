@@ -1,5 +1,5 @@
 import { Err, isErr, isOk, Ok, Result } from "@davidsouther/jiffies/lib/esm/result.js";
-import { Chip, Connection, Pin } from "./Chip";
+import { Chip, Connection, Pin } from "../simulator/Chip";
 import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
 import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
 import { ElkBuilder } from "../../schematic/elkBuilder";
@@ -101,7 +101,7 @@ class ChipBuilder {
       ast.outPins.map((pin) => ({ pin: pin.name, width: pin.width })),
       ast.name,
       [],
-      []
+      [] // todo: parse clocked pinlist
     );
     this.elkBuilder = new ElkBuilder(this.chip);
   }

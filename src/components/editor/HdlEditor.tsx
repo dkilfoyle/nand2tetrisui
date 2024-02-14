@@ -9,7 +9,7 @@ import { ELKNode } from "../schematic/elkBuilder";
 import { activeTabAtom, chipAtom, selectedPartAtom } from "../../store/atoms";
 import { setAriaSetSize } from "@ag-grid-community/core/dist/esm/es6/utils/aria";
 import { IAstChip } from "./grammars/hdlInterface";
-import { Chip } from "./grammars/Chip";
+import { Chip } from "./simulator/Chip";
 
 export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();

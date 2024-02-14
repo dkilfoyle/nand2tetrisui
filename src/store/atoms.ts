@@ -1,6 +1,6 @@
 import { atom } from "jotai";
 import { atomWithImmer } from "jotai-immer";
-import { Chip } from "../components/editor/grammars/Chip";
+import { Chip } from "../components/editor/simulator/Chip";
 import { IAstTst } from "../components/editor/grammars/tstInterface";
 
 export const chipAtom = atom<Chip | undefined>(undefined);
@@ -12,7 +12,7 @@ selectedTestAtom.debugLabel = "selectedTest";
 export const selectedPartAtom = atom<Chip | undefined>(undefined);
 selectedPartAtom.debugLabel = "selectedPartAtom";
 
-const defaultFile = "Project02/ALU";
+const defaultFile = "Project03/Bit";
 
 export const openFilesAtom = atom<string[]>([defaultFile]);
 openFilesAtom.debugLabel = "openFiles";

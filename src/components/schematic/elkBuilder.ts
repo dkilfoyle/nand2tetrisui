@@ -1,4 +1,4 @@
-import { Bus, Chip, Connection, Pin } from "../editor/grammars/Chip";
+import { Bus, Chip, Connection, Pin } from "../editor/simulator/Chip";
 
 interface ELKEdge {
   id: string;
