@@ -51,6 +51,7 @@ const SemiColonToken = addToken({ name: "SemiColon", label: ";", pattern: /;/ })
 // const EqualsToken = addToken({ name: "Equals", pattern: /=/ });
 const BinaryToken = addToken({ name: "BinaryToken", pattern: /%B/ });
 // const HexToken = addToken({ name: "HexToken", pattern: /%X/ });
+const MinusToken = addToken({ name: "MinusToken", pattern: /-/ });
 const DecimalToken = addToken({ name: "DecimalToken", pattern: /%D/ });
 const IntegerToken = addToken({ name: "Integer", pattern: /[0-9]+/ });
 allTokens.push(IdToken);
@@ -95,9 +96,11 @@ class TstParser extends EmbeddedActionsParser {
 
   decimalNumber = this.RULE("decimalNumber", () => {
     let a: IToken | undefined;
+    let minus: IToken | undefined;
     this.OPTION(() => (a = this.CONSUME(DecimalToken)));
-    const b = this.CONSUME(IntegerToken);
-    return { value: parseInt(b.image), span: mergeSpans(getTokenSpan(a ?? b), getTokenSpan(b)) };
+    this.OPTION2(() => (minus = this.CONSUME2(MinusToken)));
+    const b = this.CONSUME3(IntegerToken);
+    return { value: parseInt((minus ? "-" : "") + b.image), span: mergeSpans(getTokenSpan(a ?? minus ?? b), getTokenSpan(b)) };
   });
 
   tstStatement = this.RULE("statement", () => {

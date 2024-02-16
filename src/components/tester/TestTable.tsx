@@ -16,6 +16,18 @@ ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
 type ITest = Record<string, any>;
 
+const toDecimal = (i: number): string => {
+  i = i & 0xffff;
+  if (i === 0x8000) {
+    return "-32768";
+  }
+  if (i & 0x8000) {
+    i = (~i + 1) & 0x7fff;
+    return `-${i}`;
+  }
+  return `${i}`;
+};
+
 export function TestTable() {
   const [tests] = useAtom(testsAtom);
   const [chip] = useAtom(chipAtom);
@@ -80,20 +92,20 @@ export function TestTable() {
           }
         } else if (testOperation.opName == "eval") {
           for (const inPin of chip.ins.entries()) {
-            row[inPin.name] = inPin.busVoltage;
+            row[inPin.name] = toDecimal(inPin.busVoltage);
           }
           chip.eval();
           // TODO: Run simulation with inputvalues
           // get output values
           for (const outPin of chip.outs.entries()) {
-            row[outPin.name] = outPin.busVoltage;
+            row[outPin.name] = toDecimal(outPin.busVoltage);
           }
         } else if (testOperation.opName == "output") {
           for (const inPin of chip.ins.entries()) {
-            row[inPin.name] = inPin.busVoltage;
+            row[inPin.name] = toDecimal(inPin.busVoltage);
           }
           for (const outPin of chip.outs.entries()) {
-            row[outPin.name] = outPin.busVoltage;
+            row[outPin.name] = toDecimal(outPin.busVoltage);
           }
           if (compareRows.length > iStatement) {
             const cmpRow = compareRows[iStatement];
@@ -121,14 +133,14 @@ export function TestTable() {
     }
     // console.log(rows);
     return rows;
-  }, [tests, chip]);
+  }, [tests, chip, compareRows]);
 
   const colDefs = useMemo<ColDef[]>(() => {
     const defs = [];
     if (!chip) return [];
     if (chip.clocked) defs.push({ field: "time", width: 50 });
     for (const inPin of chip?.ins.entries()) {
-      defs.push({ field: inPin.name, width: 50 });
+      defs.push({ field: inPin.name, width: 70 });
     }
     for (const outPin of chip?.outs.entries()) {
       defs.push({
@@ -137,13 +149,13 @@ export function TestTable() {
           {
             field: outPin.name,
             headerName: "Out",
-            width: 70,
+            width: 80,
             cellStyle: (params: CellClassParams) => {
               if (params.data[outPin.name] != params.data[outPin.name + "_e"]) return { backgroundColor: "#F56565" };
               else return { backgroundColor: "#48BB78" };
             },
           },
-          { field: outPin.name + "_e", headerName: "Exp", width: 70 },
+          { field: outPin.name + "_e", headerName: "Exp", width: 80 },
         ],
       });
     }

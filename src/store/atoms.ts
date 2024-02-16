@@ -12,7 +12,7 @@ selectedTestAtom.debugLabel = "selectedTest";
 export const selectedPartAtom = atom<Chip | undefined>(undefined);
 selectedPartAtom.debugLabel = "selectedPartAtom";
 
-const defaultFile = "Project03/Bit";
+const defaultFile = "Project03/Register";
 
 export const openFilesAtom = atom<string[]>([defaultFile]);
 openFilesAtom.debugLabel = "openFiles";

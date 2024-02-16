@@ -30,5 +30,5 @@ export const projects = [
     ],
   },
   { id: "Project02", name: "Project02", children: ["HalfAdder", "FullAdder", "Add16", "Inc16", "ALU"] },
-  { id: "Project03", name: "Project02", children: ["DFF", "Bit", "Register", "RAM8", "RAM64", "RAM512", "RAM4K", "RAM16K", "PC"] },
+  { id: "Project03", name: "Project03", children: ["DFF", "Bit", "Register", "RAM8", "RAM64", "RAM512", "RAM4K", "RAM16K", "PC"] },
 ];
