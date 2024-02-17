@@ -3,13 +3,10 @@ import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseHdl } from "./grammars/hdlParser";
 import { compileHdl } from "./grammars/hdlCompiler";
-import { elkAtom } from "../schematic/Schematic";
 import { useAtom } from "jotai";
 import { ELKNode } from "../schematic/elkBuilder";
-import { activeTabAtom, chipAtom, selectedPartAtom } from "../../store/atoms";
-import { setAriaSetSize } from "@ag-grid-community/core/dist/esm/es6/utils/aria";
+import { activeTabAtom, chipAtom, elkAtom, selectedPartAtom } from "../../store/atoms";
 import { IAstChip } from "./grammars/hdlInterface";
-import { Chip } from "./simulator/Chip";
 
 export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();

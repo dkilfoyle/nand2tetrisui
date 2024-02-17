@@ -11,21 +11,25 @@
 set in 0,
 set sel 0,
 eval,
+output,
 expect a 0,
 expect b 0;
 
 set sel 1,
 eval,
+output,
 expect a 0,
 expect b 0;
 
 set in 1,
 set sel 0,
 eval,
+output,
 expect a 1,
 expect b 0;
 
 set sel 1,
 eval,
+output,
 expect a 0,
 expect b 1;

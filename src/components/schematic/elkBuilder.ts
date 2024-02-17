@@ -305,7 +305,7 @@ export class ElkBuilder {
   }
 
   getELK() {
-    console.log("ELK", this);
+    // console.log("ELK", this);
     this.wires.forEach((wire) => {
       if (wire.source == "_ALIAS_") {
         wire.hwMeta.name = wire.sourcePort;

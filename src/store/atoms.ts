@@ -1,21 +1,28 @@
 import { atom } from "jotai";
-import { atomWithImmer } from "jotai-immer";
 import { Chip } from "../components/editor/simulator/Chip";
 import { IAstTst } from "../components/editor/grammars/tstInterface";
+import { ELKNode } from "../components/schematic/elkBuilder";
 
 export const chipAtom = atom<Chip | undefined>(undefined);
 chipAtom.debugLabel = "chip";
+
 export const testsAtom = atom<IAstTst | null>(null);
 testsAtom.debugLabel = "tests";
+
+export const testBreakpointAtom = atom(-1);
+testBreakpointAtom.debugLabel = "testBreakpoint";
+
 export const selectedTestAtom = atom<number | null>(null);
 selectedTestAtom.debugLabel = "selectedTest";
+
 export const selectedPartAtom = atom<Chip | undefined>(undefined);
 selectedPartAtom.debugLabel = "selectedPartAtom";
 
-const defaultFile = "Project03/Register";
+const defaultFile = "Project03/RAM8";
 
 export const openFilesAtom = atom<string[]>([defaultFile]);
 openFilesAtom.debugLabel = "openFiles";
+
 export const activeTabAtom = atom<string>(defaultFile);
 activeTabAtom.debugLabel = "activeTab";
 
@@ -35,3 +42,17 @@ export const getPinsData = (chip: Chip): IPinData[] => {
 };
 
 export const pinsDataAtom = atom<IPinData[]>([]);
+pinsDataAtom.debugLabel = "pinsData";
+
+export const elkAtom = atom<ELKNode>({
+  id: "0",
+  hwMeta: { maxId: 0, bodyText: "Empty Elk", name: "error", cls: null },
+  ports: [],
+  edges: [],
+  children: [],
+  properties: {
+    "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
+    "org.eclipse.elk.layered.mergeEdges": 1,
+  },
+});
+elkAtom.debugLabel = "elkAtom";

@@ -3,7 +3,7 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 export const TstLanguage: monaco.languages.IMonarchLanguage = {
   defaultToken: "invalid",
 
-  keywords: ["output-list", "set", "eval", "expect", "output", "echo", "clear-echo", "repeat", "while", "load"],
+  keywords: ["output-list", "set", "eval", "expect", "output", "echo", "clear-echo", "repeat", "while", "load", "note"],
 
   // The main tokenizer for our languages
   tokenizer: {

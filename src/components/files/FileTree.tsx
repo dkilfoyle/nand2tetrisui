@@ -1,37 +1,47 @@
-import { useAtom } from "jotai";
-import { NodeApi, Tree } from "react-arborist";
+import { useAtom, useSetAtom } from "jotai";
 import useResizeObserver from "use-resize-observer";
 import { activeTabAtom, openFilesAtom } from "../../store/atoms";
 import { useCallback } from "react";
 import { projects } from "../../examples/projects";
+import Tree from "rc-tree";
 
 // const toChild = (x: string) => ({ name: x, id: x });
 
-const fileTree = projects.map((project, i) => {
+import "rc-tree/assets/index.css";
+import { Key } from "rc-tree/lib/interface";
+
+interface IFileTreeNode {
+  key: string;
+  title: string;
+  children?: IFileTreeNode[];
+}
+
+const fileTree: IFileTreeNode[] = projects.map((project, i) => {
   return {
-    id: project.id,
-    name: project.name,
-    children: projects[i].children.map((child) => ({ id: child, name: child })),
+    key: project.id,
+    title: project.name,
+    children: projects[i].children.map((child) => ({ key: `${project.name}/${child}`, title: child })),
   };
 });
 
 export function FileTree() {
   const { ref, height } = useResizeObserver();
   const [openFiles, setOpenFiles] = useAtom(openFilesAtom);
-  const [activeTab, setActiveTab] = useAtom(activeTabAtom);
+  const setActiveTab = useSetAtom(activeTabAtom);
 
   const onSelect = useCallback(
-    (node: NodeApi) => {
-      // console.log("onActivate", node);
-      setOpenFiles([...openFiles, `${node.parent?.data.name}/${node.id}`]);
-      setActiveTab(`${node.parent?.data.name}/${node.id}`);
+    (keys: Key[], info: any) => {
+      if (!info.node.children && keys.length) {
+        setOpenFiles([...openFiles, keys[0] as string]);
+        setActiveTab(keys[0] as string);
+      }
     },
     [openFiles, setActiveTab, setOpenFiles]
   );
 
   return (
     <div ref={ref} style={{ minHeight: "0", height: "100%" }}>
-      <Tree height={height} initialData={fileTree} onActivate={onSelect}></Tree>
+      <Tree treeData={fileTree} defaultExpandAll showLine onSelect={onSelect}></Tree>
     </div>
   );
 }

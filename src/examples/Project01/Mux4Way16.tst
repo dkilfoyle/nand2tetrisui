@@ -14,18 +14,22 @@ set c 0,
 set d 0,
 set sel 0,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 1,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 2,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 3,
 eval,
+output,
 expect out %B0000000000000000;
 
 set a %B0001001000110100,
@@ -34,16 +38,20 @@ set c %B1010101010101010,
 set d %B0101010101010101,
 set sel 0,
 eval,
+output,
 expect out %B0001001000110100;
 
 set sel 1,
 eval,
+output,
 expect out %B1001100001110110;
 
 set sel 2,
 eval,
+output,
 expect out %B1010101010101010;
 
 set sel 3,
 eval,
+output,
 expect out %B0101010101010101;

@@ -10,20 +10,25 @@
 
 set in %B0000000000000000,
 eval,
+output,
 expect out %B1111111111111111;
 
 set in %B1111111111111111,
 eval,
+output,
 expect out %B0000000000000000;
 
 set in %B1010101010101010,
 eval,
+output,
 expect out %B0101010101010101;
 
 set in %B0011110011000011,
 eval,
+output,
 expect out %B1100001100111100;
 
 set in %B0001001000110100,
 eval,
+output,
 expect out %B1110110111001011;

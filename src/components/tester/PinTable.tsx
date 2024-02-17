@@ -2,7 +2,7 @@ import { AgGridReact } from "@ag-grid-community/react";
 import { Box } from "@chakra-ui/react";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { pinsDataAtom, selectedPartAtom, selectedTestAtom } from "../../store/atoms";
+import { selectedPartAtom, selectedTestAtom } from "../../store/atoms";
 import { Pin } from "../editor/simulator/Chip";
 import { ColDef } from "@ag-grid-community/core";
 
@@ -36,13 +36,13 @@ export function PinTable() {
   }, [part, selectedTest]);
 
   const onSelectionChanged = useCallback(() => {
-    const selectedRows = gridRef.current!.api.getSelectedRows();
-    console.log(selectedRows);
+    // const selectedRows = gridRef.current!.api.getSelectedRows();
+    // console.log(selectedRows);
   }, []);
 
-  useEffect(() => {
-    console.log("PinTable", part);
-  }, [part]);
+  // useEffect(() => {
+  //   console.log("PinTable", part);
+  // }, [part]);
 
   return (
     <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">

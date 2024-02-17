@@ -6,7 +6,8 @@ import { checkTst, parseTst } from "./grammars/tstParser";
 import { IAstTst } from "./grammars/tstInterface";
 
 import "./TstEditor.css";
-import { activeTabAtom, chipAtom, selectedTestAtom, testsAtom } from "../../store/atoms";
+import { activeTabAtom, chipAtom, selectedTestAtom, testBreakpointAtom, testsAtom } from "../../store/atoms";
+import { Box, Button, Flex, HStack } from "@chakra-ui/react";
 
 export function TstEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
@@ -18,6 +19,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   const [chip, setChip] = useAtom(chipAtom);
   const [selectedTest] = useAtom(selectedTestAtom);
   const [activeTab] = useAtom(activeTabAtom);
+  const [testBreakpoint, setTestBreakpoint] = useAtom(testBreakpointAtom);
 
   //Add error markers on parse failure
   useEffect(() => {
@@ -111,5 +113,33 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
     [parseAndCompile]
   );
 
-  return <Editor language="tst" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
+  const onStep = useCallback(() => {
+    setTestBreakpoint(testBreakpoint + 1);
+  }, [setTestBreakpoint, testBreakpoint]);
+
+  const onRun = useCallback(() => {
+    if (!tests) return;
+    setTestBreakpoint(tests.statements.length ?? -1);
+  }, [setTestBreakpoint, tests]);
+
+  const onReset = useCallback(() => {
+    setTestBreakpoint(-1);
+  }, [setTestBreakpoint]);
+
+  return (
+    <Flex direction="column" h="100%" gap="5px">
+      <HStack>
+        <Button size="sm" onReset={onReset}>
+          Reset
+        </Button>
+        <Button size="sm" onClick={onStep}>
+          Step
+        </Button>
+        <Button size="sm" onClick={onRun}>
+          Run
+        </Button>
+      </HStack>
+      <Editor language="tst" value={sourceCode} onChange={onValueChange} onMount={onMount} />
+    </Flex>
+  );
 }

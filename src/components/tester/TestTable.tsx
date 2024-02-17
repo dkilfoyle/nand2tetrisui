@@ -4,13 +4,24 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AgGridReact } from "@ag-grid-community/react";
 import "@ag-grid-community/styles/ag-grid.css";
 import "@ag-grid-community/styles/ag-theme-quartz.css";
-import { CellClassParams, ColDef, ModuleRegistry } from "@ag-grid-community/core";
+import { CellClassParams, ColDef, ModuleRegistry, RowDataUpdatedEvent } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
-import { Box } from "@chakra-ui/react";
+import { Badge, Box, Button, Flex, HStack } from "@chakra-ui/react";
 import { Bus, HIGH, LOW } from "../editor/simulator/Chip";
-import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom, activeTabAtom } from "../../store/atoms";
+import {
+  chipAtom,
+  testsAtom,
+  selectedTestAtom,
+  pinsDataAtom,
+  getPinsData,
+  selectedPartAtom,
+  activeTabAtom,
+  testBreakpointAtom,
+} from "../../store/atoms";
 import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
 import { sourceCodes } from "../../examples/projects";
+
+import "./TestTable.css";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
@@ -35,6 +46,7 @@ export function TestTable() {
   const [, setSelectedTest] = useAtom(selectedTestAtom);
   const [, setPinsData] = useAtom(pinsDataAtom);
   const [activeTab] = useAtom(activeTabAtom);
+  const [testBreakpoint] = useAtom(testBreakpointAtom);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
 
@@ -60,26 +72,28 @@ export function TestTable() {
     });
   }, [chip]);
 
-  const pinTable = useMemo(() => {
+  const rowData = useMemo(() => {
     if (!tests) return [];
     if (!chip) return [];
+    if (testBreakpoint == -1) return [];
     // const inputValues = new Map<string, number>(); // keep track of input pin assigned values
     const rows: Record<string, number | undefined | string>[] = [];
     chip.reset();
     const clock = Clock.get();
     clock.reset();
 
-    let iStatement = 0;
-
-    for (const testStatement of tests.statements) {
-      const row: Record<string, number | undefined | { result: number; correct: boolean } | string> = {};
-      for (const inPin of chip?.ins.entries()) {
-        row[inPin.name] = undefined;
-      }
-      for (const outPin of chip?.outs.entries()) {
-        row[outPin.name] = undefined;
-        row[outPin.name + "_e"] = undefined;
-      }
+    for (let iStatement = 0; iStatement < testBreakpoint; iStatement++) {
+      if (iStatement > tests.statements.length - 1) throw Error();
+      const testStatement = tests.statements[iStatement];
+      // const row: Record<string, number | undefined | { result: number; correct: boolean } | string> = {};
+      // for (const inPin of chip?.ins.entries()) {
+      //   row[inPin.name] = undefined;
+      // }
+      // for (const outPin of chip?.outs.entries()) {
+      //   row[outPin.name] = undefined;
+      //   row[outPin.name + "_e"] = undefined;
+      // }
+      let note = "";
       for (const testOperation of testStatement.operations) {
         if (testOperation.opName == "set") {
           // inputValues.set(testOperation.assignment!.id, testOperation.assignment!.value);
@@ -91,49 +105,42 @@ export function TestTable() {
             pinOrBus?.pull(value === 0 ? LOW : HIGH);
           }
         } else if (testOperation.opName == "eval") {
-          for (const inPin of chip.ins.entries()) {
-            row[inPin.name] = toDecimal(inPin.busVoltage);
-          }
           chip.eval();
-          // TODO: Run simulation with inputvalues
-          // get output values
-          for (const outPin of chip.outs.entries()) {
-            row[outPin.name] = toDecimal(outPin.busVoltage);
-          }
         } else if (testOperation.opName == "output") {
+          const row: Record<string, string> = {};
           for (const inPin of chip.ins.entries()) {
             row[inPin.name] = toDecimal(inPin.busVoltage);
           }
           for (const outPin of chip.outs.entries()) {
             row[outPin.name] = toDecimal(outPin.busVoltage);
           }
-          if (compareRows.length > iStatement) {
-            const cmpRow = compareRows[iStatement];
+          if (compareRows.length > 0) {
+            const cmpRow = compareRows[rows.length];
             Object.entries(cmpRow).forEach(([key, val]) => {
-              row[key + "_e"] = val;
+              row[key + "_e"] = val.toString();
             });
           }
+          row.index = rows.length.toString();
+          if (chip.clocked) row.time = clock.toString();
+          row.note = note;
+          rows.push(row);
         } else if (testOperation.opName == "tick") {
           chip.eval();
           clock.tick();
-          row["time"] = clock.toString();
         } else if (testOperation.opName == "tock") {
           chip.eval();
           clock.tock();
-          row["time"] = clock.toString();
         } else if (testOperation.opName == "expect") {
-          row[testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
+          rows[rows.length - 1][testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
+          // row[testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
         } else if (testOperation.opName == "note") {
-          row.note = testOperation.note;
+          note = testOperation.note || "";
         }
       }
-
-      row.index = iStatement++;
-      rows.push(row);
     }
     // console.log(rows);
     return rows;
-  }, [tests, chip, compareRows]);
+  }, [tests, chip, testBreakpoint, compareRows]);
 
   const colDefs = useMemo<ColDef[]>(() => {
     const defs = [];
@@ -192,9 +199,51 @@ export function TestTable() {
     } else setSelectedTest(null);
   }, [chip, selectedPart, setPinsData, setSelectedTest]);
 
+  const onRowDataUpdated = useCallback(
+    (event: RowDataUpdatedEvent<ITest>) => {
+      if (!chip) return;
+      const firstError = rowData.findIndex((row) => {
+        return [...chip.outs.entries()].find((out) => row[out.name] != row[out.name + "_e"]);
+      });
+      // console.log("firstError", firstError);
+      if (firstError >= 0) event.api.ensureIndexVisible(firstError);
+    },
+    [chip, rowData]
+  );
+
+  const outcome = useMemo(() => {
+    if (!chip) return [0, 0];
+    let pass = 0;
+    const fail = 0;
+    rowData.forEach((row) => {
+      pass++;
+    });
+    return [pass, fail];
+  }, [chip, rowData]);
+
   return (
-    <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">
-      <AgGridReact ref={gridRef} rowData={pinTable} columnDefs={colDefs} onSelectionChanged={onSelectionChanged} rowSelection="single" />
-    </Box>
+    <Flex direction="column" padding={2} gap={2} w="100%" h="100%">
+      <HStack>
+        <h2>Test Results</h2>
+        <span>
+          Pass: <Badge colorScheme="green">{outcome[0]}</Badge>
+        </span>
+        <span>
+          Fail: <Badge colorScheme="red">{outcome[1]}</Badge>
+        </span>
+        <span>
+          Total: <Badge colorScheme="purple">{outcome[1] + outcome[0]}</Badge>
+        </span>
+      </HStack>
+      <AgGridReact
+        className="ag-theme-quartz"
+        ref={gridRef}
+        rowData={rowData}
+        columnDefs={colDefs}
+        onSelectionChanged={onSelectionChanged}
+        rowSelection="single"
+        onRowDataUpdated={onRowDataUpdated}
+      />
+    </Flex>
   );
 }

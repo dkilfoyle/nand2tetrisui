@@ -11,6 +11,7 @@
 set in 1,
 set sel %B00,
 eval,
+output,
 expect a 1,
 expect b 0,
 expect c 0,
@@ -22,6 +23,7 @@ expect h 0;
 
 set sel %B01,
 eval,
+output,
 expect a 0,
 expect b 1,
 expect c 0,
@@ -33,6 +35,7 @@ expect h 0;
 
 set sel %B10,
 eval,
+output,
 expect a 0,
 expect b 0,
 expect c 1,
@@ -44,6 +47,7 @@ expect h 0;
 
 set sel %B11,
 eval,
+output,
 expect a 0,
 expect b 0,
 expect c 0,
@@ -55,6 +59,7 @@ expect h 0;
 
 set sel %B100,
 eval,
+output,
 expect a 0,
 expect b 0,
 expect c 0,
@@ -66,6 +71,7 @@ expect h 0;
 
 set sel %B101,
 eval,
+output,
 expect a 0,
 expect b 0,
 expect c 0,
@@ -77,6 +83,7 @@ expect h 0;
 
 set sel %B110,
 eval,
+output,
 expect a 0,
 expect b 0,
 expect c 0,
@@ -88,6 +95,7 @@ expect h 0;
 
 set sel %B111,
 eval,
+output,
 expect a 0,
 expect b 0,
 expect c 0,

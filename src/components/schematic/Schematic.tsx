@@ -1,22 +1,8 @@
 import { useEffect, useRef } from "react";
-import { ELKNode } from "./elkBuilder";
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import "d3-hwschematic/dist/d3-hwschematic.css";
-
 import "./schematic.css";
-import { chipAtom, selectedTestAtom } from "../../store/atoms";
-
-export const elkAtom = atom<ELKNode>({
-  id: "0",
-  hwMeta: { maxId: 0, bodyText: "Empty Elk", name: "error", cls: null },
-  ports: [],
-  edges: [],
-  children: [],
-  properties: {
-    "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
-    "org.eclipse.elk.layered.mergeEdges": 1,
-  },
-});
+import { chipAtom, elkAtom, selectedTestAtom } from "../../store/atoms";
 
 export function Schematic() {
   const hwSchematic = useRef();
@@ -26,7 +12,7 @@ export function Schematic() {
   const [chip] = useAtom(chipAtom);
 
   useEffect(() => {
-    console.log("ELK:", elk);
+    // console.log("ELK:", elk);
     if (hwSchematic.current)
       hwSchematic.current.bindData(elk).then(
         () => {},

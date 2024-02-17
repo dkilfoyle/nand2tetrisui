@@ -18,34 +18,42 @@ set g 0,
 set h 0,
 set sel 0,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 1,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 2,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 3,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 4,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 5,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 6,
 eval,
+output,
 expect out %B0000000000000000;
 
 set sel 7,
 eval,
+output,
 expect out %B0000000000000000;
 
 set a %B0001001000110100,
@@ -58,32 +66,40 @@ set g %B0111100010011010,
 set h %B1000100110101011,
 set sel 0,
 eval,
+output,
 expect out %B0001001000110100;
 
 set sel 1,
 eval,
+output,
 expect out %B0010001101000101;
 
 set sel 2,
 eval,
+output,
 expect out %B0011010001010110;
 
 set sel 3,
 eval,
+output,
 expect out %B0100010101100111;
 
 set sel 4,
 eval,
+output,
 expect out %B0101011001111000;
 
 set sel 5,
 eval,
+output,
 expect out %B0110011110001001;
 
 set sel 6,
 eval,
+output,
 expect out %B0111100010011010;
 
 set sel 7,
 eval,
+output,
 expect out %B1000100110101011;
