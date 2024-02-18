@@ -1,7 +1,7 @@
 import { EmbeddedActionsParser, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
-import { builtinChips } from "../simulator/builtins";
+import { builtinChips } from "../../components/editor/simulator/builtins";
 import { IAstChip, IAstPart, IAstWire, IAstPinDeclaration, IAstPinParts } from "./hdlInterface";
-import { getTokenSpan, mergeSpans } from "./parserUtils";
+import { getTokenSpan, mergeSpans } from "../parserUtils";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {

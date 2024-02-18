@@ -1,9 +1,9 @@
-import { Err, isErr, isOk, Ok, Result } from "@davidsouther/jiffies/lib/esm/result.js";
-import { Chip, Connection, Pin } from "../simulator/Chip";
-import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
+import { isErr, Ok } from "@davidsouther/jiffies/lib/esm/result.js";
+import { Chip, Connection } from "../../components/editor/simulator/Chip";
+import { getBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
 import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
-import { ElkBuilder } from "../../schematic/elkBuilder";
-import { CompilationError, Span } from "./parserUtils";
+import { ElkBuilder } from "../../components/schematic/elkBuilder";
+import { CompilationError, Span } from "../parserUtils";
 
 export const compileHdl = async (ast: IAstChip) => {
   return await new ChipBuilder(ast).build();
@@ -146,10 +146,9 @@ class ChipBuilder {
       this.elkBuilder.wire(partChip, wires);
       return true;
     } catch (e) {
-      console.log(e);
       const err = e as CompilationError;
-      this.compileErrors.push(err);
-      return;
+      this.compileErrors.push({ message: err.message, span: part.span });
+      return false;
     }
   }
 

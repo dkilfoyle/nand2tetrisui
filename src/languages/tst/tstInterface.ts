@@ -1,7 +1,8 @@
-import { Span } from "./parserUtils";
+import { Span } from "../parserUtils";
 
 export interface IAstTst {
   statements: IAstTstStatement[];
+  outputFormats: IAstTstOutputFormat;
 }
 
 export interface IAstTstStatement {
@@ -19,10 +20,12 @@ export interface IAstTstOperation {
 export interface IAstTstOperationAssignment {
   id: string;
   index?: number;
-  value: number;
+  value: string;
 }
 
 export interface IAstTstNumberValue {
-  value: number;
+  value: string;
   span: Span;
 }
+
+export type IAstTstOutputFormat = Record<string, number>;

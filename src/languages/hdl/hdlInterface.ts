@@ -1,4 +1,4 @@
-import { Span } from "./parserUtils";
+import { Span } from "../parserUtils";
 
 export interface IAstChip {
   name: string;

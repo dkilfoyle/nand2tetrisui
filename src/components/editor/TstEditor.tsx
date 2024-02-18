@@ -2,8 +2,8 @@ import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { atom, useAtom } from "jotai";
-import { checkTst, parseTst } from "./grammars/tstParser";
-import { IAstTst } from "./grammars/tstInterface";
+import { checkTst, parseTst } from "../../languages/tst/tstParser";
+import { IAstTst } from "../../languages/tst/tstInterface";
 
 import "./TstEditor.css";
 import { activeTabAtom, chipAtom, selectedTestAtom, testBreakpointAtom, testsAtom } from "../../store/atoms";
@@ -17,9 +17,8 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
 
   const [tests, setTests] = useAtom(testsAtom);
   const [chip, setChip] = useAtom(chipAtom);
-  const [selectedTest] = useAtom(selectedTestAtom);
   const [activeTab] = useAtom(activeTabAtom);
-  const [testBreakpoint, setTestBreakpoint] = useAtom(testBreakpointAtom);
+  const [selectedTest, setSelectedTest] = useAtom(selectedTestAtom);
 
   //Add error markers on parse failure
   useEffect(() => {
@@ -36,7 +35,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   const parseAndCompile = useCallback(
     (code: string) => {
       const { ast, parseErrors } = parseTst(code);
-      // console.log("tst ast:", ast, chip, parseErrors);
+      console.log("tst ast:", ast, chip, parseErrors);
       if (parseErrors.length > 0) setErrors(parseErrors);
       else {
         if (chip) {
@@ -69,7 +68,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   useEffect(() => {
     if (!monaco || !decorations) return;
     // console.log("tstEditor useEffect[selectedTest]", monaco, selectedTest, tests, editor.current);
-    if (selectedTest == null || tests == null) {
+    if (selectedTest == null || tests == null || selectedTest == -1) {
       decorations?.clear();
       return;
     }
@@ -83,6 +82,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
         },
       },
     ]);
+    editor.current?.revealLineInCenter(statement.span.startLineNumber);
   }, [decorations, monaco, selectedTest, tests]);
 
   const onMount: OnMount = useCallback(
@@ -114,28 +114,30 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   );
 
   const onStep = useCallback(() => {
-    setTestBreakpoint(testBreakpoint + 1);
-  }, [setTestBreakpoint, testBreakpoint]);
+    if (selectedTest !== null) setSelectedTest(selectedTest + 1);
+  }, [setSelectedTest, selectedTest]);
 
   const onRun = useCallback(() => {
-    if (!tests) return;
-    setTestBreakpoint(tests.statements.length ?? -1);
-  }, [setTestBreakpoint, tests]);
+    if (tests !== null && tests.statements.length > 0) setSelectedTest(tests.statements.length - 1);
+  }, [setSelectedTest, tests]);
 
   const onReset = useCallback(() => {
-    setTestBreakpoint(-1);
-  }, [setTestBreakpoint]);
+    setSelectedTest(-1);
+  }, [setSelectedTest]);
 
   return (
     <Flex direction="column" h="100%" gap="5px">
       <HStack>
-        <Button size="sm" onReset={onReset}>
+        <Button size="sm" onClick={onReset}>
           Reset
         </Button>
-        <Button size="sm" onClick={onStep}>
+        <Button
+          size="sm"
+          onClick={onStep}
+          isDisabled={tests == null || tests.statements.length == 0 || selectedTest == null || selectedTest == tests.statements.length - 1}>
           Step
         </Button>
-        <Button size="sm" onClick={onRun}>
+        <Button size="sm" onClick={onRun} isDisabled={tests == null || selectedTest == null || tests.statements.length == 0}>
           Run
         </Button>
       </HStack>

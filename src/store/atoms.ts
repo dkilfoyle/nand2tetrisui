@@ -1,7 +1,9 @@
 import { atom } from "jotai";
 import { Chip } from "../components/editor/simulator/Chip";
-import { IAstTst } from "../components/editor/grammars/tstInterface";
+import { IAstTst } from "../languages/tst/tstInterface";
 import { ELKNode } from "../components/schematic/elkBuilder";
+
+const defaultFile = "Project01/And16";
 
 export const chipAtom = atom<Chip | undefined>(undefined);
 chipAtom.debugLabel = "chip";
@@ -17,8 +19,6 @@ selectedTestAtom.debugLabel = "selectedTest";
 
 export const selectedPartAtom = atom<Chip | undefined>(undefined);
 selectedPartAtom.debugLabel = "selectedPartAtom";
-
-const defaultFile = "Project03/RAM8";
 
 export const openFilesAtom = atom<string[]>([defaultFile]);
 openFilesAtom.debugLabel = "openFiles";

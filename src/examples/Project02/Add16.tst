@@ -3,25 +3,39 @@
 // by Nisan and Schocken, MIT Press.
 // File name: projects/02/Add16.tst
 
-load Add16.hdl,
-output-file Add16.out,
-compare-to Add16.cmp,
-output-list a%B1.16.1 b%B1.16.1 out%B1.16.1;
+// load Add16.hdl,
+// output-file Add16.out,
+// compare-to Add16.cmp,
+// output-list a%B1.16.1 b%B1.16.1 out%B1.16.1;
 
 set a %B0000000000000000,
 set b %B0000000000000000,
 eval,
-output;
+output,
+expect out 0,
+note "0+0=0";
 
 set a %B0000000000000000,
 set b %B1111111111111111,
 eval,
-output;
+output,
+expect out -1,
+note "0+-1=-1";
 
+// from left 1+1 = [1]0,
+// 1+1+c = [1]1
+// 1+1+c = [1]1....
+// 2s complement = invert then add 1
+// 2      = 0000000000000010
+// invert = 1111111111111101
+// + 1      0000000000000001
+// -2     = 1111111111111110
 set a %B1111111111111111,
 set b %B1111111111111111,
 eval,
-output;
+output,
+expect out %B1111111111111110,
+note "-1+-1=-2";
 
 set a %B1010101010101010,
 set b %B0101010101010101,

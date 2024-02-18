@@ -3,6 +3,7 @@ export const sourceCodes = {
   ...import.meta.glob(["./Project01/*.hdl", "./Project01/*.tst"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project02/*.hdl", "./Project02/*.tst"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project03/*.hdl", "./Project03/*.tst", "./Project03/*.cmp"], { as: "raw", eager: true }),
+  ...import.meta.glob(["./Project05/*.hdl", "./Project05/*.tst", "./Project05/*.cmp"], { as: "raw", eager: true }),
 };
 
 export const projects = [
@@ -31,4 +32,5 @@ export const projects = [
   },
   { id: "Project02", name: "Project02", children: ["HalfAdder", "FullAdder", "Add16", "Inc16", "ALU"] },
   { id: "Project03", name: "Project03", children: ["DFF", "Bit", "Register", "RAM8", "RAM64", "RAM512", "RAM4K", "RAM16K", "PC"] },
+  { id: "Project05", name: "Project05", children: ["Memory"] },
 ];

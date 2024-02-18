@@ -6,12 +6,13 @@ import { Schematic } from "./components/schematic/Schematic";
 registerLanguages();
 
 import { TestTable } from "./components/tester/TestTable";
-import { FileTree } from "./components/files/FileTree";
+import { FileTree } from "./components/fileTree/FileTree";
 import { useAtom } from "jotai";
 import { FileTab } from "./components/FileTab";
 import { activeTabAtom, openFilesAtom } from "./store/atoms";
 import { useEffect, useState } from "react";
 import { PinTable } from "./components/tester/PinTable";
+import { RamTable } from "./components/tester/RamTable";
 
 window.g = null;
 window.i = null;
@@ -65,6 +66,7 @@ export default function App() {
                 <TabList>
                   <Tab>Schematic</Tab>
                   <Tab>Pins</Tab>
+                  <Tab>RAM</Tab>
                 </TabList>
                 <TabPanels flex="1">
                   <TabPanel h="100%">
@@ -72,6 +74,9 @@ export default function App() {
                   </TabPanel>
                   <TabPanel h="100%">
                     <PinTable></PinTable>
+                  </TabPanel>
+                  <TabPanel h="100%">
+                    <RamTable></RamTable>
                   </TabPanel>
                 </TabPanels>
               </Tabs>

@@ -6,7 +6,8 @@
 // load And16.hdl,
 // output-file And16.out,
 // compare-to And16.cmp,
-// output-list a%B1.16.1 b%B1.16.1 out%B1.16.1;
+
+output-list a%B b%B out%B;
 
 set a %B0000000000000000,
 set b %B0000000000000000,

@@ -16,7 +16,11 @@ export function PinTable() {
   const [selectedTest] = useAtom(selectedTestAtom);
   // const [pinsData] = useAtom(pinsDataAtom);
   const gridRef = useRef<AgGridReact<IPinRow>>(null);
-  const [colDefs] = useState<ColDef[]>([{ field: "group", width: 100 }, { field: "pin.name", width: 100 }, { field: "pin.busVoltage" }]);
+  const [colDefs] = useState<ColDef[]>([
+    { field: "group", width: 100 },
+    { headerName: "pin.name", valueGetter: (params: ValueGetterParams) => `${params.data.pin.name}[${params.data.pin.width}]`, width: 100 },
+    { field: "pin.busVoltage" },
+  ]);
 
   const pinsData = useMemo<IPinRow[]>(() => {
     const rows: IPinRow[] = [];
