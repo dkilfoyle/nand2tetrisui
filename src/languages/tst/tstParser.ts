@@ -58,6 +58,7 @@ const BinaryToken = addToken({ name: "BinaryToken", pattern: /%B/ });
 const MinusToken = addToken({ name: "MinusToken", pattern: /-/ });
 const DecimalToken = addToken({ name: "DecimalToken", pattern: /%D/ });
 const IntegerToken = addToken({ name: "Integer", pattern: /[0-9]+/ });
+const PeriodToken = addToken({ name: "Period", pattern: /\./ });
 allTokens.push(IdToken);
 const tstLexer = new Lexer(allTokens);
 
@@ -94,8 +95,15 @@ class TstParser extends EmbeddedActionsParser {
 
   formatEntry = this.RULE("formatEntry", () => {
     const id = this.CONSUME(IdToken);
-    const binary = this.OPTION(() => this.CONSUME(BinaryToken));
-    return { pinName: id.image, radix: binary !== undefined ? 2 : 10 };
+    const binary = this.OR([{ ALT: () => this.CONSUME(BinaryToken) }, { ALT: () => this.CONSUME(DecimalToken) }]);
+    this.OPTION2(() => {
+      this.CONSUME(IntegerToken);
+      this.CONSUME(PeriodToken);
+      this.CONSUME2(IntegerToken);
+      this.CONSUME2(PeriodToken);
+      this.CONSUME3(IntegerToken);
+    });
+    return { pinName: id.image, radix: binary.image == "%B" ? 2 : binary.image == "%D" ? 10 : undefined };
   });
 
   numberValue = this.RULE("numberValue", () => {

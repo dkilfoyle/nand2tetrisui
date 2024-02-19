@@ -1,4 +1,4 @@
-interface IBuiltinChip {
+export interface IBuiltinChip {
   name: string;
   documentation?: string;
   inputs: { name: string; width: number }[];
@@ -133,7 +133,8 @@ export const builtinChips: IBuiltinChip[] = [
   {
     name: "Mux",
     documentation: `Multiplexor:
- if (sel == 0) out = a, else out = b`,
+ if (sel == 0) out = a
+ if (sel == 1) out = b`,
     inputs: [
       { name: "a", width: 1 },
       { name: "b", width: 1 },
@@ -143,10 +144,11 @@ export const builtinChips: IBuiltinChip[] = [
   {
     name: "DMux4Way",
     documentation: `4-way demultiplexor:
- [a, b, c, d] = [in, 0, 0, 0] if sel == 00
-                [0, in, 0, 0] if sel == 01
-                [0, 0, in, 0] if sel == 10
-                [0, 0, 0, in] if sel == 11
+                [a,  b,  c,  d]  
+if sel == 00 => [in, 0,  0,  0] 
+if sel == 01 => [0,  in, 0,  0] 
+if sel == 10 => [0,  0,  in, 0] 
+if sel == 11 => [0,  0,  0,  in] 
 `,
     inputs: [
       { name: "in", width: 1 },

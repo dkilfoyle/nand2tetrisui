@@ -6,7 +6,8 @@
 // load PC.hdl,
 // output-file PC.out,
 // compare-to PC.cmp,
-// output-list time%S1.4.1 in%D1.6.1 reset%B2.1.2 load%B2.1.2 inc%B2.1.2 out%D1.6.1;
+
+output-list in%D1.6.1 reset%B2.1.2 load%B2.1.2 inc%B2.1.2 out%D1.6.1;
 
 set in 0,
 set reset 0,

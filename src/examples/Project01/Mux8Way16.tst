@@ -6,7 +6,8 @@
 // load Mux8Way16.hdl,
 // output-file Mux8Way16.out,
 // compare-to Mux8Way16.cmp,
-// output-list a%B1.16.1 b%B1.16.1 c%B1.16.1 d%B1.16.1 e%B1.16.1 f%B1.16.1 g%B1.16.1 h%B1.16.1 sel%B2.3.2 out%B1.16.1;
+
+output-list a%B1.16.1 b%B1.16.1 c%B1.16.1 d%B1.16.1 e%B1.16.1 f%B1.16.1 g%B1.16.1 h%B1.16.1 sel%B2.3.2 out%B1.16.1;
 
 set a 0,
 set b 0,

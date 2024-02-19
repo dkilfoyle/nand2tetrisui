@@ -8,6 +8,8 @@
 // compare-to Mux16.cmp,
 // output-list a%B1.16.1 b%B1.16.1 sel%D2.1.2 out%B1.16.1;
 
+output-list a%B1.16.1 b%B1.16.1 sel%D2.1.2 out%B1.16.1;
+
 set a 0,
 set b 0,
 set sel 0,

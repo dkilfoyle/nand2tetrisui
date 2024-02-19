@@ -1,3 +1,5 @@
+output-list x%D y%D out%B;
+
 note "Set x=0, y=-1",
 set x %B0000000000000000,  // x = 0
 set y %B1111111111111111;  // y = -1
@@ -11,7 +13,7 @@ set f  1,
 set no 0,
 eval,
 output,
-expect out 0,
+expect out %B0000000000000000,
 expect zr 1,
 expect ng 0;
 
@@ -24,7 +26,7 @@ set f  1,
 set no 1,
 eval,
 output,
-expect out 1,
+expect out %B0000000000000001,
 expect zr 0,
 expect ng 0;
 
@@ -50,7 +52,7 @@ set f  0,
 set no 0,
 eval,
 output,
-expect out 0,
+expect out %B0000000000000000,
 expect zr 1,
 expect ng 0;
 
@@ -89,7 +91,7 @@ set f  0,
 set no 1,
 eval,
 output,
-expect out 0,
+expect out %B0000000000000000,
 expect zr 1,
 expect ng 0;
 
@@ -102,7 +104,7 @@ set f  1,
 set no 1,
 eval,
 output,
-expect out 0,
+expect out %B0000000000000000,
 expect zr 1,
 expect ng 0;
 
@@ -115,7 +117,7 @@ set f  1,
 set no 1,
 eval,
 output,
-expect out 1,
+expect out %B0000000000000001,
 expect zr 0,
 expect ng 0;
 
@@ -128,7 +130,7 @@ set f  1,
 set no 1,
 eval,
 output,
-expect out 1,
+expect out %B0000000000000001,
 expect zr 0,
 expect ng 0;
 
@@ -141,7 +143,7 @@ set f  1,
 set no 1,
 eval,
 output,
-expect out 0,
+expect out %B0000000000000000,
 expect zr 1,
 expect ng 0;
 
@@ -193,7 +195,7 @@ set f  1,
 set no 1,
 eval,
 output,
-expect out 1,
+expect out %B0000000000000001,
 expect zr 0,
 expect ng 0;
 
@@ -219,7 +221,7 @@ set f  0,
 set no 0,
 eval,
 output,
-expect out 0,
+expect out %B0000000000000000,
 expect zr 1,
 expect ng 0;
 
@@ -249,7 +251,7 @@ set f  1,
 set no 0,
 eval,
 output,
-expect out 0,
+expect out %B0000000000000000,
 expect zr 1,
 expect ng 0;
 
@@ -262,7 +264,7 @@ set f  1,
 set no 1,
 eval,
 output,
-expect out 1,
+expect out %B0000000000000001,
 expect zr 0,
 expect ng 0;
 
@@ -288,7 +290,7 @@ set f  0,
 set no 0,
 eval,
 output,
-expect out 17,
+expect out %B0000000000010001,
 expect zr 0,
 expect ng 0;
 
@@ -301,7 +303,7 @@ set f  0,
 set no 0,
 eval,
 output,
-expect out 3,
+expect out %B0000000000000011,
 expect zr 0,
 expect ng 0;
 

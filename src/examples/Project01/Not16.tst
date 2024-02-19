@@ -8,6 +8,8 @@
 // compare-to Not16.cmp,
 // output-list in%B1.16.1 out%B1.16.1;
 
+output-list in%B out%B;
+
 set in %B0000000000000000,
 eval,
 output,

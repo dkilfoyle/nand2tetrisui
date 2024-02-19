@@ -3,7 +3,7 @@ import { Chip } from "../components/editor/simulator/Chip";
 import { IAstTst } from "../languages/tst/tstInterface";
 import { ELKNode } from "../components/schematic/elkBuilder";
 
-const defaultFile = "Project01/And16";
+const defaultFile = "Project01/And";
 
 export const chipAtom = atom<Chip | undefined>(undefined);
 chipAtom.debugLabel = "chip";

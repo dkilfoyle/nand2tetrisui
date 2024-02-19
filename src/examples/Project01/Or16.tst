@@ -3,6 +3,8 @@
 // by Nisan and Schocken, MIT Press.
 // File name: projects/01/Or16.tst
 
+output-list a%B b%B out%B;
+
 set a %B0000000000000000,
 set b %B0000000000000000,
 eval,

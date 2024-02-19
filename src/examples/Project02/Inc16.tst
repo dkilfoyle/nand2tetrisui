@@ -3,23 +3,27 @@
 // by Nisan and Schocken, MIT Press.
 // File name: projects/02/Inc16.tst
 
-load Inc16.hdl,
-output-file Inc16.out,
-compare-to Inc16.cmp,
+//load Inc16.hdl,
+//output-file Inc16.out,
+//compare-to Inc16.cmp,
 output-list in%B1.16.1 out%B1.16.1;
 
 set in %B0000000000000000,  // in = 0
 eval,
-output;
+output,
+expect out %B0000000000000001;
 
 set in %B1111111111111111,  // in = -1
 eval,
-output;
+output,
+expect out %B0000000000000000;
 
 set in %B0000000000000101,  // in = 5
 eval,
-output;
+output,
+expect out %B0000000000000110;
 
 set in %B1111111111111011,  // in = -5
 eval,
-output;
+output,
+expect out %B1111111111111100;

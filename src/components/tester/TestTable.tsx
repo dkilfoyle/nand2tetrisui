@@ -7,7 +7,7 @@ import "@ag-grid-community/styles/ag-theme-quartz.css";
 import { CellClassParams, ColDef, ModuleRegistry, RowDataUpdatedEvent } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Badge, Flex, HStack } from "@chakra-ui/react";
-import { Bus, HIGH, LOW } from "../editor/simulator/Chip";
+import { Bus, HIGH, LOW, Pin } from "../editor/simulator/Chip";
 import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom, activeTabAtom } from "../../store/atoms";
 import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
 import { sourceCodes } from "../../examples/projects";
@@ -82,18 +82,18 @@ export function TestTable() {
       if (iStatement > tests.statements.length - 1) throw Error();
       const testStatement = tests.statements[iStatement];
       let note = "";
+      let outputed = false;
       for (const testOperation of testStatement.operations) {
         if (testOperation.opName == "set") {
           // inputValues.set(testOperation.assignment!.id, testOperation.assignment!.value);
           const pinOrBus = chip.get(testOperation.assignment!.id, testOperation.assignment!.index);
           const valueString = testOperation.assignment!.value;
           const value = valueString.startsWith("%B") ? parseInt(valueString.slice(2), 2) : parseInt(valueString);
-          if (value)
-            if (pinOrBus instanceof Bus) {
-              pinOrBus.busVoltage = value;
-            } else {
-              pinOrBus?.pull(value === 0 ? LOW : HIGH);
-            }
+          if (pinOrBus instanceof Bus) {
+            pinOrBus.busVoltage = value;
+          } else {
+            pinOrBus?.pull(value === 0 ? LOW : HIGH);
+          }
         } else if (testOperation.opName == "eval") {
           chip.eval();
         } else if (testOperation.opName == "output") {
@@ -116,6 +116,7 @@ export function TestTable() {
           if (chip.clocked) row.time = clock.toString();
           row.note = note;
           rows.push(row);
+          outputed = true;
         } else if (testOperation.opName == "tick") {
           chip.eval();
           clock.tick();
@@ -128,21 +129,27 @@ export function TestTable() {
           // row[testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
         } else if (testOperation.opName == "note") {
           note = testOperation.note || "";
+          if (outputed) rows[rows.length - 1].note = note;
         }
       }
     }
 
-    // console.log(rows);
+    console.log(rows);
     setPinsData(getPinsData(selectedPart || chip));
     return rows;
   }, [tests, chip, selectedTest, setPinsData, selectedPart, compareRows]);
 
   const colDefs = useMemo<ColDef[]>(() => {
+    const getColWidth = (pin: Pin) => {
+      if (tests?.outputFormats[pin.name] == 10) return 55;
+      // if (tests?.outputFormats[pin.name] == 2) return 100;
+      return Math.max(30, pin.width * 7);
+    };
     const defs = [];
     if (!chip) return [];
     if (chip.clocked) defs.push({ field: "time", width: 50 });
     for (const inPin of chip.ins.entries()) {
-      defs.push({ field: inPin.name, width: 70 });
+      defs.push({ field: inPin.name, width: getColWidth(inPin) });
     }
     for (const outPin of chip.outs.entries()) {
       defs.push({
@@ -151,20 +158,20 @@ export function TestTable() {
           {
             field: outPin.name,
             headerName: "Out",
-            width: 100,
+            width: getColWidth(outPin),
             cellStyle: (params: CellClassParams) => {
               if (params.data[outPin.name] != params.data[outPin.name + "_e"]) return { backgroundColor: "#F56565" };
               else return { backgroundColor: "#48BB78" };
             },
           },
-          { field: outPin.name + "_e", headerName: "Exp", width: 100 },
+          { field: outPin.name + "_e", headerName: "Exp", width: getColWidth(outPin) },
         ],
       });
     }
-    defs.push({ field: "note" });
-    // console.log(defs);
+    defs.push({ field: "note", width: 200 });
+    console.log(defs);
     return defs;
-  }, [chip]);
+  }, [chip, tests?.outputFormats]);
 
   // useEffect(() => {
   //   console.log("TestTable useEffect[pinTable]", pinTable);
@@ -239,6 +246,7 @@ export function TestTable() {
         onSelectionChanged={onSelectionChanged}
         rowSelection="single"
         onRowDataUpdated={onRowDataUpdated}
+        autoSizeStrategy={{ type: "fitCellContents" }}
       />
     </Flex>
   );

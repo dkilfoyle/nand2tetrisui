@@ -44,6 +44,8 @@ export function PinTable() {
     // console.log(selectedRows);
   }, []);
 
+  parseInt;
+
   // useEffect(() => {
   //   console.log("PinTable", part);
   // }, [part]);

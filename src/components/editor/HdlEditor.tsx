@@ -94,6 +94,10 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
     [parseAndCompile]
   );
 
+  useEffect(() => {
+    if (monaco) monaco.editor.quickSuggestions = true;
+  }, [monaco]);
+
   const onValueChange = useCallback(
     // TODO: Debounce
     (value: string | undefined) => {
