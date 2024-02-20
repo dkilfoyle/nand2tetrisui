@@ -7,6 +7,17 @@ import { useAtom } from "jotai";
 import { ELKNode } from "../schematic/elkBuilder";
 import { activeTabAtom, chipAtom, elkAtom, selectedPartAtom } from "../../store/atoms";
 import { IAstChip } from "../../languages/hdl/hdlInterface";
+import { IBuiltinChip, builtinChips } from "../../languages/hdl/builtins";
+
+const buildChipDetail = (chip: IBuiltinChip) => {
+  const inputs = chip.inputs.map((input) => `${input.name}[${input.width}]`).join(", ");
+  const outputs = chip.outputs.map((output) => `${output.name}[${output.width}]`).join(", ");
+  return `${chip.name}(${inputs}${outputs.length > 0 ? ", " : ""}${outputs})`;
+};
+
+const buildChipDocumentation = (chip: IBuiltinChip) => {
+  return buildChipDetail(chip) + "\n\n" + chip.documentation;
+};
 
 export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
@@ -95,8 +106,63 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
   );
 
   useEffect(() => {
-    if (monaco) monaco.editor.quickSuggestions = true;
-  }, [monaco]);
+    if (monaco) {
+      monaco.editor.quickSuggestions = true;
+      const hoverDisposable = monaco.languages.registerHoverProvider("hdl", {
+        provideHover: (model, position, token) => {
+          const word = model.getWordAtPosition(position);
+          if (!word) return;
+          const builtin = builtinChips.find((builtin) => builtin.name == word.word);
+          if (builtin)
+            return {
+              contents: [{ value: `Builtin: ${builtin.name}` }, { value: buildChipDetail(builtin) }],
+            };
+        },
+      });
+      const completionDisposable = monaco.languages.registerCompletionItemProvider("hdl", {
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const line = model.getLineContent(position.lineNumber);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+          const partSuggestions = Object.values(builtinChips).map((chip) => {
+            const inputs = chip.inputs.map((input, n) => `${input.name}=$${n + 1}`).join(", ");
+            const outputs = chip.outputs.map((output, n) => `${output.name}=$${n + 1}`).join(", ");
+            return {
+              label: chip.name,
+              kind: monaco.languages.CompletionItemKind.Snippet,
+              insertText: `${chip.name}(${inputs}${outputs.length ? ", " : ""}${outputs});`,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              documentation: chip.documentation,
+              detail: buildChipDetail(chip),
+              // detail: "bla bla",
+              range: range,
+            } as monacoT.languages.CompletionItem;
+          });
+          const chipSuggestions = (
+            chip ? [...chip.ins.entries(), ...chip.pins.entries(), ...chip.outs.entries()] : []
+          ).map<monacoT.languages.CompletionItem>((pin) => ({
+            label: pin.name,
+            kind: monaco.languages.CompletionItemKind.Variable,
+            range: range,
+            insertText: pin.name,
+            detail: chip?.ins.has(pin.name) ? "Input" : chip?.outs.has(pin.name) ? "Output" : "Internal",
+          }));
+          console.log(chipSuggestions);
+
+          return { suggestions: line.includes("(") ? chipSuggestions : partSuggestions };
+        },
+      });
+      return () => {
+        completionDisposable.dispose();
+        hoverDisposable.dispose();
+      };
+    }
+  }, [monaco, chip]);
 
   const onValueChange = useCallback(
     // TODO: Debounce

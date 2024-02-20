@@ -1,5 +1,5 @@
 import { isErr, Ok } from "@davidsouther/jiffies/lib/esm/result.js";
-import { Chip, Connection } from "../../components/editor/simulator/Chip";
+import { Chip, Connection } from "./Chip";
 import { getBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
 import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
 import { ElkBuilder } from "../../components/schematic/elkBuilder";

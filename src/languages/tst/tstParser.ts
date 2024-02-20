@@ -1,7 +1,7 @@
 import { EmbeddedActionsParser, IToken, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
 import { getTokenSpan, mergeSpans } from "../parserUtils";
 import { IAstTst, IAstTstNumberValue, IAstTstOperation, IAstTstOutputFormat, IAstTstStatement } from "./tstInterface";
-import { Chip } from "../../components/editor/simulator/Chip";
+import { Chip } from "../hdl/Chip";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {

@@ -3,7 +3,7 @@ import { Box } from "@chakra-ui/react";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { selectedPartAtom, selectedTestAtom } from "../../store/atoms";
-import { Pin } from "../editor/simulator/Chip";
+import { Pin } from "../../languages/hdl/Chip";
 import { ColDef } from "@ag-grid-community/core";
 
 interface IPinRow {

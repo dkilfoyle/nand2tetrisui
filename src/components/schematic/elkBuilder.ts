@@ -1,4 +1,4 @@
-import { Bus, Chip, Connection, Pin } from "../editor/simulator/Chip";
+import { Bus, Chip, Connection, Pin } from "../../languages/hdl/Chip";
 
 interface ELKEdge {
   id: string;

@@ -34,20 +34,35 @@ CHIP CPU {
 
     PARTS:
     // c instruction
-    // 1  xx a    c  c c c c c d d d j j j
-    // 15    12  11 10 9 8 7 6 5 4 3 2 1 0
-    // d5 = destination = A
-    // d4 = destination = D
-    // d3 = destination = M
-   
+    // 1  xx  a   c1 c2 c3 c4 c5 c6   d1 d2 d3   j1 j2 j1
+    // 15    12   11 10 09 08 07 06   05 04 03   02 01 00
 
-    Not(in=instruction[15], out=cIsA);
-    Or(a=cIsA, b=instruction[5], out=cLoadA); // instruction[5]
-
-    Mux16(a=ALUOut, b=instruction, sel=isAInstruction, out=ALUorInstr);
+    // d1 d2 d3
+    //  A  D  M
+    //  0  0  0  null
+    //  0  0  1  M      Memory[A]
+    //  0  1  0  D      D
+    //  0  1  1  MD     Memory[A] and D
+    //  1  0  0  A
+    //  1  0  1  AM     A register and Memory[A]
+    //  1  1  0  AD     A register and D register
+    //  1  1  1  AMD    A register and Memory[A] and D register
    
-    PC(in=, inc=true, load=false, reset=reset, out=pc);
-    Register(in=ALUorInstr, load=, out=A);
-    Register(in=, load=, out=D);
+    // A register = instruction if A-instruction (instruction[15]==0) or ALUOut if destination A (d1==T)
+    Mux16(a=instruction, b=ALUOut, sel=instruction[15], out=ALUorAInstr);
+    Not(in=instruction[15], out=isAInstr);
+    Or(a=isAInstr, b=instruction[5], out=cLoadA); // instruction[5]
+    ARegister(in=ALUorAInstr, load=cLoadA, out=A);
+
+    // D register = ALUOut if destination D (d2==T)
+    DRegister(in=ALUOut, load=instruction[4], out=D);
+
+    // ALU y = A when 
+    Mux16(a=inM, b=A, sel=false, out=AorInM);
+
+
+    ALU(x=D, y=AorInM, zx=false, nx=false, zy=false, ny=false, f=false, no=false, out=ALUOut);
+   
+    PC(in=A, inc=true, load=false, reset=reset, out[0..14]=pc);
 
 }

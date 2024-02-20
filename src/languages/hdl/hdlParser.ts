@@ -1,5 +1,5 @@
 import { EmbeddedActionsParser, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
-import { builtinChips } from "../../components/editor/simulator/builtins";
+import { builtinChips } from "./builtins";
 import { IAstChip, IAstPart, IAstWire, IAstPinDeclaration, IAstPinParts } from "./hdlInterface";
 import { getTokenSpan, mergeSpans } from "../parserUtils";
 

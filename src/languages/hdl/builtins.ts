@@ -132,23 +132,21 @@ export const builtinChips: IBuiltinChip[] = [
   },
   {
     name: "Mux",
-    documentation: `Multiplexor:
- if (sel == 0) out = a
- if (sel == 1) out = b`,
+    documentation: "Multiplexor:\nif (sel == 0) out = a\nif (sel == 1) out = b",
     inputs: [
       { name: "a", width: 1 },
       { name: "b", width: 1 },
+      { name: "sel", width: 1 },
     ],
     outputs: [{ name: "out", width: 1 }],
   },
   {
     name: "DMux4Way",
     documentation: `4-way demultiplexor:
-                [a,  b,  c,  d]  
-if sel == 00 => [in, 0,  0,  0] 
-if sel == 01 => [0,  in, 0,  0] 
-if sel == 10 => [0,  0,  in, 0] 
-if sel == 11 => [0,  0,  0,  in] 
+if sel == 00 => [in, 0,  0,  0]
+if sel == 01 => [0,  in, 0,  0]
+if sel == 10 => [0,  0,  in, 0]
+if sel == 11 => [0,  0,  0,  in]
 `,
     inputs: [
       { name: "in", width: 1 },
@@ -164,9 +162,9 @@ if sel == 11 => [0,  0,  0,  in]
   {
     name: "DMux8Way",
     documentation: `4-way demultiplexor:
- [a, b..., g, h] = [in, 0, 0, 0, 0, 0, 0, 0 ] if sel == 000
-                   ...
-                   [0,  0, 0, 0, 0, 0, 0, in] if sel == 111
+if sel == 000 => [in, 0, 0, 0, 0, 0, 0, 0 ]
+...
+if sel == 111 => [0,  0, 0, 0, 0, 0, 0, in]
 `,
     inputs: [
       { name: "in", width: 1 },
@@ -234,7 +232,7 @@ if sel == 11 => [0,  0,  0,  in]
     ],
   },
   {
-    name: "Alu",
+    name: "ALU",
     documentation: `Manipulates the x and y inputs
  if (zx == 1) sets x = 0        16-bit constant
  if (nx == 1) sets x = !x       bitwise not
@@ -276,6 +274,22 @@ if sel == 11 => [0,  0,  0,  in]
       { name: "load", width: 1 },
     ],
     outputs: [{ name: "out", width: 1 }],
+  },
+  {
+    name: "ARegister",
+    inputs: [
+      { name: "in", width: 16 },
+      { name: "load", width: 1 },
+    ],
+    outputs: [{ name: "out", width: 16 }],
+  },
+  {
+    name: "DRegister",
+    inputs: [
+      { name: "in", width: 16 },
+      { name: "load", width: 1 },
+    ],
+    outputs: [{ name: "out", width: 16 }],
   },
   {
     name: "Register",

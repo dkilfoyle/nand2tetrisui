@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { Chip } from "../components/editor/simulator/Chip";
+import { Chip } from "../languages/hdl/Chip";
 import { IAstTst } from "../languages/tst/tstInterface";
 import { ELKNode } from "../components/schematic/elkBuilder";
 
