@@ -6,7 +6,8 @@
 // load RAM8.hdl,
 // output-file RAM8.out,
 // compare-to RAM8.cmp,
-// output-list time%S1.4.1 in%D1.6.1 load%B2.1.2 address%D3.1.3 out%D1.6.1;
+
+output-list time%S1.4.1 in%D1.6.1 load%B2.1.2 address%D3.1.3 out%D1.6.1;
 
 set in 0,
 set load 0,

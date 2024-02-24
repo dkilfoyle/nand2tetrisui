@@ -57,6 +57,7 @@ const BinaryToken = addToken({ name: "BinaryToken", pattern: /%B/ });
 // const HexToken = addToken({ name: "HexToken", pattern: /%X/ });
 const MinusToken = addToken({ name: "MinusToken", pattern: /-/ });
 const DecimalToken = addToken({ name: "DecimalToken", pattern: /%D/ });
+const String2Token = addToken({ name: "String2Token", pattern: /%S/ });
 const IntegerToken = addToken({ name: "Integer", pattern: /[0-9]+/ });
 const PeriodToken = addToken({ name: "Period", pattern: /\./ });
 allTokens.push(IdToken);
@@ -95,7 +96,11 @@ class TstParser extends EmbeddedActionsParser {
 
   formatEntry = this.RULE("formatEntry", () => {
     const id = this.CONSUME(IdToken);
-    const binary = this.OR([{ ALT: () => this.CONSUME(BinaryToken) }, { ALT: () => this.CONSUME(DecimalToken) }]);
+    const binary = this.OR([
+      { ALT: () => this.CONSUME(BinaryToken) },
+      { ALT: () => this.CONSUME(String2Token) },
+      { ALT: () => this.CONSUME(DecimalToken) },
+    ]);
     this.OPTION2(() => {
       this.CONSUME(IntegerToken);
       this.CONSUME(PeriodToken);

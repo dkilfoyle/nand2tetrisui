@@ -3,12 +3,12 @@ import { Chip } from "../languages/hdl/Chip";
 import { IAstTst } from "../languages/tst/tstInterface";
 import { ELKNode } from "../components/schematic/elkBuilder";
 
-const defaultFile = "Project01/And";
+const defaultFile = "Project03/RAM64";
 
 export const chipAtom = atom<Chip | undefined>(undefined);
 chipAtom.debugLabel = "chip";
 
-export const testsAtom = atom<IAstTst | null>(null);
+export const testsAtom = atom<{ ast: IAstTst; tabName: string; chipName: string } | null>(null);
 testsAtom.debugLabel = "tests";
 
 export const testBreakpointAtom = atom(-1);

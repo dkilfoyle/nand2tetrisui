@@ -8,6 +8,7 @@ import { ELKNode } from "../schematic/elkBuilder";
 import { activeTabAtom, chipAtom, elkAtom, selectedPartAtom } from "../../store/atoms";
 import { IAstChip } from "../../languages/hdl/hdlInterface";
 import { IBuiltinChip, builtinChips } from "../../languages/hdl/builtins";
+import { useDebouncedCallback } from "use-debounce";
 
 const buildChipDetail = (chip: IBuiltinChip) => {
   const inputs = chip.inputs.map((input) => `${input.name}[${input.width}]`).join(", ");
@@ -55,22 +56,25 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
     }
   }, [errors, editor, monaco, language, setElk, activeTab, name]);
 
-  const parseAndCompile = useCallback(
-    (code: string) => {
-      const { ast, parseErrors } = parseHdl(code);
-      if (parseErrors.length > 0) setErrors(parseErrors);
-      else {
-        setAst(ast);
-        compileHdl(ast).then(({ chip: newchip, compileErrors, elk: newelk }) => {
-          setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-          if (compileErrors.length == 0 && activeTab == name) {
-            setElk(newelk as ELKNode);
-            setChip(newchip);
-          }
-        });
-      }
-    },
-    [activeTab, name, setChip, setElk]
+  const parseAndCompile = useDebouncedCallback(
+    useCallback(
+      (code: string) => {
+        const { ast, parseErrors } = parseHdl(code);
+        if (parseErrors.length > 0) setErrors(parseErrors);
+        else {
+          setAst(ast);
+          compileHdl(ast).then(({ chip: newchip, compileErrors, elk: newelk }) => {
+            setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
+            if (compileErrors.length == 0 && activeTab == name) {
+              setElk(newelk as ELKNode);
+              setChip(newchip);
+            }
+          });
+        }
+      },
+      [activeTab, name, setChip, setElk]
+    ),
+    500
   );
 
   useEffect(() => {

@@ -1,13 +1,12 @@
 import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import { checkTst, parseTst } from "../../languages/tst/tstParser";
-import { IAstTst } from "../../languages/tst/tstInterface";
 
 import "./TstEditor.css";
-import { activeTabAtom, chipAtom, selectedTestAtom, testBreakpointAtom, testsAtom } from "../../store/atoms";
-import { Box, Button, Flex, HStack } from "@chakra-ui/react";
+import { activeTabAtom, chipAtom, selectedTestAtom, testsAtom } from "../../store/atoms";
+import { Button, Flex, HStack } from "@chakra-ui/react";
 
 export function TstEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
@@ -16,7 +15,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   const [decorations, setDecorations] = useState<monacoT.editor.IEditorDecorationsCollection | null>(null);
 
   const [tests, setTests] = useAtom(testsAtom);
-  const [chip, setChip] = useAtom(chipAtom);
+  const [chip] = useAtom(chipAtom);
   const [activeTab] = useAtom(activeTabAtom);
   const [selectedTest, setSelectedTest] = useAtom(selectedTestAtom);
 
@@ -43,7 +42,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
           setErrors(checkErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
           if (checkErrors.length == 0 && activeTab == name) {
             // console.log("TstEditor setTests:", ast);
-            setTests(ast);
+            setTests({ ast, tabName: activeTab, chipName: chip.name });
           }
         }
       }
@@ -72,7 +71,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
       decorations?.clear();
       return;
     }
-    const statement = tests?.statements[selectedTest];
+    const statement = tests?.ast.statements[selectedTest];
     decorations.set([
       {
         range: new monaco.Range(statement.span.startLineNumber, 1, statement.span.endLineNumber, 1),
@@ -88,12 +87,12 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   const onMount: OnMount = useCallback(
     (ed) => {
       editor.current = ed;
-      editor.current?.onDidChangeCursorPosition((e) => {
-        const index = editor.current?.getModel()?.getOffsetAt(e.position);
-        if (index !== undefined) {
-          onCursorPositionChange?.(index);
-        }
-      });
+      // editor.current?.onDidChangeCursorPosition((e) => {
+      //   const index = editor.current?.getModel()?.getOffsetAt(e.position);
+      //   if (index !== undefined) {
+      //     onCursorPositionChange?.(index);
+      //   }
+      // });
       setDecorations(editor.current.createDecorationsCollection([]));
       const value = editor.current.getValue();
       parseAndCompile(value);
@@ -101,9 +100,9 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
     [parseAndCompile]
   );
 
-  const onCursorPositionChange = (index: number) => {
-    // console.log("onCursorPositionChanged: index = ", index);
-  };
+  // const onCursorPositionChange = (index: number) => {
+  //   // console.log("onCursorPositionChanged: index = ", index);
+  // };
 
   const onValueChange = useCallback(
     (value: string | undefined) => {
@@ -118,7 +117,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   }, [setSelectedTest, selectedTest]);
 
   const onRun = useCallback(() => {
-    if (tests !== null && tests.statements.length > 0) setSelectedTest(tests.statements.length - 1);
+    if (tests !== null && tests.ast.statements.length > 0) setSelectedTest(tests.ast.statements.length - 1);
   }, [setSelectedTest, tests]);
 
   const onReset = useCallback(() => {
@@ -134,10 +133,12 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
         <Button
           size="sm"
           onClick={onStep}
-          isDisabled={tests == null || tests.statements.length == 0 || selectedTest == null || selectedTest == tests.statements.length - 1}>
+          isDisabled={
+            tests == null || tests.ast.statements.length == 0 || selectedTest == null || selectedTest == tests.ast.statements.length - 1
+          }>
           Step
         </Button>
-        <Button size="sm" onClick={onRun} isDisabled={tests == null || selectedTest == null || tests.statements.length == 0}>
+        <Button size="sm" onClick={onRun} isDisabled={tests == null || selectedTest == null || tests.ast.statements.length == 0}>
           Run
         </Button>
       </HStack>

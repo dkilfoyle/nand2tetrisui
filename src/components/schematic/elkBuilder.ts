@@ -1,4 +1,4 @@
-import { Bus, Chip, Connection, Pin } from "../../languages/hdl/Chip";
+import { Bus, Chip, Connection, Pin, PinSide } from "../../languages/hdl/Chip";
 
 interface ELKEdge {
   id: string;
@@ -159,12 +159,21 @@ export class ElkBuilder {
             sourcePort: from.name, // to be post-processed to this.ports.get(from.name)
             target: partId,
             targetPort: `${partId}_${to.name}`,
-            hwMeta: { name: `${this.chip.name}_${from.name}` },
+            hwMeta: { name: this.pinSideToString(from) },
           });
         }
       }
     }
   }
+
+  pinSideToString = (pinSide: PinSide) => {
+    let name = pinSide.name;
+    if (pinSide.subbed) {
+      if (pinSide.width == 1) name += `[${pinSide.start}]`;
+      else name += `[${pinSide.start + pinSide.width! - 1}: ${pinSide.start}]`;
+    }
+    return name;
+  };
 
   getElkId = (name: string) => {
     this.idMap.set(name, this.maxId++);
@@ -308,7 +317,7 @@ export class ElkBuilder {
     // console.log("ELK", this);
     this.wires.forEach((wire) => {
       if (wire.source == "_ALIAS_") {
-        wire.hwMeta.name = wire.sourcePort;
+        // wire.hwMeta.name = wire.sourcePort;
         const sourcePort = this.pinPorts.get(wire.sourcePort);
         if (!sourcePort) throw Error(`No source port entry found for alias ${wire.sourcePort}`);
         wire.source = sourcePort.node;

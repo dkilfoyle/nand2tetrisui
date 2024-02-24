@@ -36,37 +36,49 @@ export function TestTable() {
   const [selectedPart] = useAtom(selectedPartAtom);
   const [, setSelectedTest] = useAtom(selectedTestAtom);
   const [, setPinsData] = useAtom(pinsDataAtom);
-  const [activeTab] = useAtom(activeTabAtom);
+  // const [activeTab] = useAtom(activeTabAtom);
   const [selectedTest] = useAtom(selectedTestAtom);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
 
   const compareRows = useMemo(() => {
     if (!chip) return [];
-    const cmp = sourceCodes["./" + activeTab + ".cmp"];
+    if (!tests) return [];
+    if (Object.keys(tests.ast.outputFormats).length == 0) return [];
+    if (tests.chipName != chip.name) return [];
+    const cmp = sourceCodes["./" + tests.tabName + ".cmp"];
     if (!cmp) return [];
-    const cmpLines = cmp.split("\n");
-    const names = cmpLines[0]
-      .split("|")
-      .slice(1, -1)
-      .map((x) => x.trimStart().trimEnd());
-    return cmpLines.slice(1).map((line) => {
-      const row: Record<string, number> = {};
-      const vals = line
-        .split("|")
-        .slice(1, -1)
-        .map((x) => x.trimStart().trimEnd());
-      names.forEach((name, i) => {
-        row[name] = parseInt(vals[i]);
+    const cmpLines = cmp
+      .split("\n")
+      .filter((l) => l.length > 0)
+      .map((line) =>
+        line
+          .split("|")
+          .slice(1, -1)
+          .map((x) => x.trim())
+      );
+
+    // output-list must specify every cmp file column in correct order
+    // can include internal pins after cmp pins
+    const oNames = Object.keys(tests.ast.outputFormats);
+    if (cmpLines[0].some((cname, i) => cname != oNames[i])) {
+      console.error("output-list must specify every cmp file column in correct order");
+      return [];
+    }
+
+    return cmpLines.slice(1).map((vals) => {
+      const row: Record<string, string> = {};
+      Object.keys(tests?.ast.outputFormats).forEach((name, i) => {
+        if (vals[i] == undefined) debugger;
+        row[name] = vals[i];
       });
       return row;
     });
-  }, [activeTab, chip]);
+  }, [chip, tests]);
 
   const rowData = useMemo(() => {
     if (!tests) return [];
     if (!chip) return [];
-    console.log(selectedTest);
     if (selectedTest == -1) return [];
     // const inputValues = new Map<string, number>(); // keep track of input pin assigned values
     const rows: Record<string, number | undefined | string>[] = [];
@@ -76,11 +88,11 @@ export function TestTable() {
 
     // if clocked chip then run all statements from 0 to selectedtest
     const startStatement = chip.clocked ? 0 : selectedTest ?? 0;
-    const endStatement = selectedTest ?? tests.statements.length - 1;
+    const endStatement = selectedTest ?? tests.ast.statements.length - 1;
 
     for (let iStatement = startStatement; iStatement <= endStatement; iStatement++) {
-      if (iStatement > tests.statements.length - 1) throw Error();
-      const testStatement = tests.statements[iStatement];
+      if (iStatement > tests.ast.statements.length - 1) throw Error();
+      const testStatement = tests.ast.statements[iStatement];
       let note = "";
       let outputed = false;
       for (const testOperation of testStatement.operations) {
@@ -98,18 +110,20 @@ export function TestTable() {
           chip.eval();
         } else if (testOperation.opName == "output") {
           const row: Record<string, string> = {};
-          for (const inPin of chip.ins.entries()) {
-            row[inPin.name] =
-              tests.outputFormats[inPin.name] == 2 ? inPin.busVoltage.toString(2).padStart(inPin.width, "0") : toDecimal(inPin.busVoltage);
-          }
-          for (const outPin of chip.outs.entries()) {
-            row[outPin.name] =
-              tests.outputFormats[outPin.name] == 2 ? outPin.busVoltage.toString(2).padStart(outPin.width, "0") : toDecimal(outPin.busVoltage);
-          }
+          [...chip.ins.entries(), ...chip.outs.entries(), ...chip.pins.entries()].forEach((pin) => {
+            row[pin.name] =
+              tests.ast.outputFormats[pin.name] == 2 ? pin.busVoltage.toString(2).padStart(pin.width, "0") : toDecimal(pin.busVoltage);
+          });
+
           if (compareRows.length > 0) {
             const cmpRow = compareRows[rows.length];
             Object.entries(cmpRow).forEach(([key, val]) => {
-              row[key + "_e"] = tests.outputFormats[key] == 2 ? val.toString(2).padStart(16, "0") : val.toString(10);
+              const pin = chip.outs.get(key) ?? chip.pins.get(key);
+
+              if (pin && val !== undefined)
+                if (tests.ast.outputFormats[key])
+                  row[key + "_e"] = tests.ast.outputFormats[key] == 2 ? val.padStart(pin.width || 16, "0") : val;
+                else row[key + "_e"] = val;
             });
           }
           row.index = rows.length.toString();
@@ -134,14 +148,13 @@ export function TestTable() {
       }
     }
 
-    console.log(rows);
     setPinsData(getPinsData(selectedPart || chip));
     return rows;
   }, [tests, chip, selectedTest, setPinsData, selectedPart, compareRows]);
 
   const colDefs = useMemo<ColDef[]>(() => {
     const getColWidth = (pin: Pin) => {
-      if (tests?.outputFormats[pin.name] == 10) return 55;
+      if (tests?.ast.outputFormats[pin.name] == 10) return 55;
       // if (tests?.outputFormats[pin.name] == 2) return 100;
       return Math.max(30, pin.width * 7);
     };
@@ -160,7 +173,8 @@ export function TestTable() {
             headerName: "Out",
             width: getColWidth(outPin),
             cellStyle: (params: CellClassParams) => {
-              if (params.data[outPin.name] != params.data[outPin.name + "_e"]) return { backgroundColor: "#F56565" };
+              if (params.data[outPin.name + "_e"]?.startsWith("*")) return { backgroundColor: "#48BB78" };
+              else if (params.data[outPin.name] != params.data[outPin.name + "_e"]) return { backgroundColor: "#F56565" };
               else return { backgroundColor: "#48BB78" };
             },
           },
@@ -168,10 +182,18 @@ export function TestTable() {
         ],
       });
     }
+    // add any internal pins listed in output-list
+    if (tests?.ast.outputFormats)
+      Object.entries(tests?.ast.outputFormats).forEach(([pinName, pinWidth]) => {
+        if (chip.pins.has(pinName))
+          defs.push({
+            field: pinName,
+            width: pinWidth == 10 ? 55 : Math.max(30, pinWidth * 7),
+          });
+      });
     defs.push({ field: "note", width: 200 });
-    console.log(defs);
     return defs;
-  }, [chip, tests?.outputFormats]);
+  }, [chip, tests?.ast.outputFormats]);
 
   // useEffect(() => {
   //   console.log("TestTable useEffect[pinTable]", pinTable);
@@ -215,7 +237,11 @@ export function TestTable() {
     let pass = 0;
     let fail = 0;
     rowData.forEach((row) => {
-      if ([...chip.outs.entries()].find((out) => row[out.name] != row[out.name + "_e"])) {
+      if (
+        [...chip.outs.entries()].find(
+          (out) => row[out.name + "_e"]?.toString().startsWith("*") == false && row[out.name] != row[out.name + "_e"]
+        )
+      ) {
         // console.log(row);
         // out = string, out_e = number
         fail++;
@@ -228,15 +254,16 @@ export function TestTable() {
     <Flex direction="column" padding={2} gap={2} w="100%" h="100%">
       <HStack>
         <h2>Test Results</h2>
-        <span>
-          Pass: <Badge colorScheme="green">{outcome[0]}</Badge>
-        </span>
-        <span>
-          Fail: <Badge colorScheme="red">{outcome[1]}</Badge>
-        </span>
-        <span>
-          Total: <Badge colorScheme="purple">{outcome[1] + outcome[0]}</Badge>
-        </span>
+        {outcome[1] == 0 && (
+          <span>
+            Pass: <Badge colorScheme="green">{outcome[0]}</Badge> / <Badge colorScheme="purple">{outcome[1] + outcome[0]}</Badge>
+          </span>
+        )}
+        {outcome[1] > 0 && (
+          <span>
+            Fail: <Badge colorScheme="red">{outcome[1]}</Badge> / <Badge colorScheme="purple">{outcome[1] + outcome[0]}</Badge>
+          </span>
+        )}
       </HStack>
       <AgGridReact
         className="ag-theme-quartz"
