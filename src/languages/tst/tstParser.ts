@@ -1,7 +1,7 @@
 import { EmbeddedActionsParser, IToken, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
 import { getTokenSpan, mergeSpans } from "../parserUtils";
 import { IAstTst, IAstTstNumberValue, IAstTstOperation, IAstTstOutputFormat, IAstTstStatement } from "./tstInterface";
-import { Chip } from "../hdl/Chip";
+import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {
@@ -88,7 +88,7 @@ class TstParser extends EmbeddedActionsParser {
     const formats: IAstTstOutputFormat = {};
     this.AT_LEAST_ONE(() => {
       const { pinName, radix } = this.SUBRULE(this.formatEntry);
-      formats[pinName] = radix;
+      formats[pinName] = radix!;
     });
     this.CONSUME(SemiColonToken);
     return formats;

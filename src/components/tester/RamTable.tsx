@@ -29,7 +29,7 @@ export function RamTable() {
 
   const onSelectionChanged = useCallback(() => {
     // const selectedRows = gridRef.current!.api.getSelectedRows();
-    console.log(selectedRows);
+    // console.log(selectedRows);
   }, []);
 
   // useEffect(() => {

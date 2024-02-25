@@ -7,8 +7,8 @@ import "@ag-grid-community/styles/ag-theme-quartz.css";
 import { CellClassParams, ColDef, ModuleRegistry, RowDataUpdatedEvent } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Badge, Flex, HStack } from "@chakra-ui/react";
-import { Bus, HIGH, LOW, Pin } from "../../languages/hdl/Chip";
-import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom, activeTabAtom } from "../../store/atoms";
+import { Bus, HIGH, LOW, Pin } from "@nand2tetris/web-ide/simulator/src/chip/chip";
+import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom } from "../../store/atoms";
 import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
 import { sourceCodes } from "../../examples/projects";
 

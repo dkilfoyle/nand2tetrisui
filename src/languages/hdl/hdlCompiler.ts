@@ -1,9 +1,13 @@
-import { isErr, Ok } from "@davidsouther/jiffies/lib/esm/result.js";
-import { Chip, Connection } from "./Chip";
-import { getBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
+import { isErr, Ok, Err, Result } from "@davidsouther/jiffies/lib/esm/result.js";
+// import { Chip, Connection } from "./Chip";
+import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
+import { Connection } from "@nand2tetris/web-ide/simulator/src/chip/chip";
+import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
 import { ElkBuilder } from "../../components/schematic/elkBuilder";
 import { CompilationError, Span } from "../parserUtils";
+import { sourceCodes } from "../../examples/projects";
+import { parseHdl } from "./hdlParser";
 
 export const compileHdl = async (ast: IAstChip) => {
   return await new ChipBuilder(ast).build();
@@ -37,13 +41,13 @@ function createWire(lhs: IAstPinParts, rhs: IAstPinParts): Connection {
       name: lhs.name,
       start: lhs.start ?? 0,
       width: pinWidth(lhs.start ?? 0, lhs.end), // lhs[0] = x
-      subbed: lhs.start == undefined ? false : true,
+      // subbed: lhs.start == undefined ? false : true,
     },
     from: {
       name: rhs.name,
       start: rhs.start ?? 0,
       width: pinWidth(rhs.start ?? 0, rhs.end),
-      subbed: rhs.start == undefined ? false : true,
+      // subbed: rhs.start == undefined ? false : true,
     },
   };
 }
@@ -113,11 +117,22 @@ class ChipBuilder {
     if (this.compileErrors.length > 0) throw Error();
     return { chip: this.chip, compileErrors: this.compileErrors, elk: this.elkBuilder.getELK() };
   }
-  build() {
+  async loadChip(name: string): Promise<Result<Chip>> {
+    if (hasBuiltinChip(name)) return getBuiltinChip(name);
+    const path = Object.keys(sourceCodes).find((fn) => fn.includes("/" + name + ".hdl"));
+    if (!path) return Err(new Error(`Could not load source chip ${path}`));
+    const code = sourceCodes[path];
+    const { ast, parseErrors } = parseHdl(code);
+    if (parseErrors.length > 0) return Err(new Error("Parse errors in source chip"));
+    const { chip, compileErrors } = await compileHdl(ast);
+    if (compileErrors.length > 0) return Err(new Error("Compile errors in source chip"));
+    return Ok(chip);
+  }
+  async build() {
     this.compileErrors = [];
     this.elkBuilder = new ElkBuilder(this.chip);
     for (const part of this.ast.parts) {
-      const builtin = getBuiltinChip(part.name); // todo hdl can reference user defined chips from virtual fs
+      const builtin = await this.loadChip(part.name); // todo hdl can reference user defined chips from virtual fs
       if (isErr(builtin)) {
         this.compileErrors.push({ message: `Unknown part name ${part.name}`, span: part.span });
         return this.Err();

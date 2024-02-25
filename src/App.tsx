@@ -24,7 +24,7 @@ export default function App() {
 
   useEffect(() => {
     setTabIndex(openFiles.findIndex((openFile) => openFile == activeTab));
-  }, [activeTab, setTabIndex]);
+  }, [activeTab, openFiles, setTabIndex]);
 
   return (
     <Flex h="100vh" w="100vw" p={3}>

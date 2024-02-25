@@ -1,4 +1,5 @@
-import { Bus, Chip, Connection, Pin, PinSide } from "../../languages/hdl/Chip";
+// import { Bus, Chip, Connection, Pin, PinSide } from "../../languages/hdl/Chip";
+import { Bus, Chip, Connection, Pin, PinSide } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 
 interface ELKEdge {
   id: string;
@@ -38,7 +39,7 @@ export interface ELKNode {
     maxId: number;
     bodyText?: string;
   };
-  properties: Record<string, any>;
+  properties: Record<string, number | string>;
 }
 
 export class ElkBuilder {
@@ -106,6 +107,7 @@ export class ElkBuilder {
   }
 
   wire(part: Chip, connections: Connection[]) {
+    if (!part.name) throw Error(`No part name ${part}`);
     const partId = `${part.name}${this.idCounters[part.name]++}`;
     this.partIds.push(partId);
     for (const { to, from } of connections) {
@@ -168,7 +170,7 @@ export class ElkBuilder {
 
   pinSideToString = (pinSide: PinSide) => {
     let name = pinSide.name;
-    if (pinSide.subbed) {
+    if (pinSide.width) {
       if (pinSide.width == 1) name += `[${pinSide.start}]`;
       else name += `[${pinSide.start + pinSide.width! - 1}: ${pinSide.start}]`;
     }
@@ -182,6 +184,7 @@ export class ElkBuilder {
   };
 
   partToNode = (part: Chip, partId: string): ELKNode => {
+    if (!part.name) throw Error(`No part name ${part}`);
     const hwMeta = {
       cls: "Operator",
       maxId: 100000,
@@ -195,7 +198,7 @@ export class ElkBuilder {
       ports.push({
         id: this.getElkId(pinId),
         direction: "INPUT",
-        properties: part.name.startsWith("Mux") && inPin.name == "sel" ? { index: 0, side: "SOUTH" } : { index, side: "WEST" },
+        properties: part.name!.startsWith("Mux") && inPin.name == "sel" ? { index: 0, side: "SOUTH" } : { index, side: "WEST" },
         hwMeta: { name: inPin.name, connectedAsParent: false, level: 0, pin: inPin, cssClass: "inPortDefault", cssStyle: "border-width:0" },
         children: [],
       });
@@ -242,6 +245,7 @@ export class ElkBuilder {
         "org.eclipse.elk.portConstraints": "FIXED_ORDER",
       },
       edges: [],
+      children: undefined,
     };
   }
 
@@ -272,10 +276,12 @@ export class ElkBuilder {
         "org.eclipse.elk.portConstraints": "FIXED_ORDER",
       },
       edges: [],
+      children: undefined,
     };
   }
 
   chipToNode(chip: Chip): ELKNode {
+    if (!chip.name) throw Error(`No chip name ${chip}`);
     const hwMeta = {
       cls: null,
       maxId: 0,

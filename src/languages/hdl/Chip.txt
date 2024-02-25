@@ -214,7 +214,7 @@ export class Pins {
 
 let id = 0;
 export class Chip {
-  private id = id++;
+  readonly id = id++;
   ins = new Pins();
   outs = new Pins();
   pins = new Pins();
