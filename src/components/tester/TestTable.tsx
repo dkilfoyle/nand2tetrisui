@@ -61,15 +61,15 @@ export function TestTable() {
     // output-list must specify every cmp file column in correct order
     // can include internal pins after cmp pins
     const oNames = Object.keys(tests.ast.outputFormats);
-    if (cmpLines[0].some((cname, i) => cname != oNames[i])) {
-      console.error("output-list must specify every cmp file column in correct order");
+    if (cmpLines[0].some((cname, i) => oNames[i].startsWith(cname) == false)) {
+      console.log("output-list must specify every cmp file column in correct order", oNames, cmpLines[0]);
       return [];
     }
 
     return cmpLines.slice(1).map((vals) => {
       const row: Record<string, string> = {};
       Object.keys(tests?.ast.outputFormats).forEach((name, i) => {
-        if (vals[i] == undefined) debugger;
+        // if (vals[i] == undefined) debugger;
         row[name] = vals[i];
       });
       return row;

@@ -69,27 +69,26 @@ CHIP CPU {
     // D-A    0  1  0  0  1  1          !(!D + A)     D-A = D + -A = D + (!A+1)
     // A-D    0  0  0  1  1  1 
 
-
+    Controller(instruction=instruction, zr=zr, ng=ng, 
+      writeM=writeM,
+      loadA=loadA,
+      loadD=loadD,
+      loadPC=loadPC,
+      selA=selA,
+      selY=selY);
    
     // A register
     // = instruction if A-instruction (instruction[15]==0)
     // or ALUOut if destination A (d1==T)
-
-    And(a=instruction[15],b=true,out=selA);
-    
     // Mux instr[15] (is C instruction) ? ALU : instruction
     Mux16(a=instruction, b=outtM, sel=selA, out=ALUorAInstr);
 
-    Not(in=instruction[15], out=isAInstr);
-    Or(a=isAInstr, b=instruction[5], out=loadA); 
     ARegister(in=ALUorAInstr, load=loadA, out=A, out[0..14]=addressM);
 
     // D register = ALUOut if destination D (d2==T)
-    And(a=instruction[15], b=instruction[4], out=loadD);
     DRegister(in=ALUOut, load=loadD, out=D);
 
     // ALU y = instruction[12](a) ? inM : A 
-    And(a=instruction[15], b=instruction[12], out=selY);
     Mux16(a=A, b=inM, sel=selY, out=AM);
  
     ALU(x=D, y=AM, 
@@ -102,24 +101,5 @@ CHIP CPU {
       out=ALUOut, out=outM, out=outtM,
       zr=zr, ng=ng);
 
-    // j3[0] out > 0
-    // j2[1] out = 0
-    // j1[2] out < 0
-    // load = j1 & ng | j2 & zr | j3 & !(ng|zr)
-    
-    // j1 & ng
-    And(a=instruction[2], b=ng, out=j1andng);
-    // j2 & zr
-    And(a=instruction[1], b=zr, out=j2andzr);
-    // j3 & !(ng|zr)
-    Or(a=ng, b=zr, out=leq0);
-    Not(in=leq0, out=positive);
-    And(a=instruction[0], b=positive, out=j3andgt0);
-    
-    Or(a=j1andng, b=j2andzr, out=j1orj2);
-    Or(a=j1orj2, b=j3andgt0, out=anyJ);
-    And(a=anyJ, b=instruction[15], out=loadPC);
     PC(in=A, inc=true, load=loadPC, reset=reset, out[0..14]=pc);
-
-    And(a=instruction[15], b=instruction[3], out=writeM);
 }

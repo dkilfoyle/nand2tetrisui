@@ -1,0 +1,62 @@
+CHIP Controller {
+
+    IN  instruction[16],
+        zr,
+        ng;
+
+    OUT writeM,
+        loadA,
+        loadD,
+        loadPC,          
+        selA,
+        selY;
+
+    PARTS:
+    // c instruction
+    // 1  xx  a   c1 c2 c3 c4 c5 c6   d1 d2 d3   j1 j2 j3
+    // 15    12   11 10 09 08 07 06   05 04 03   02 01 00
+
+    // d1 d2 d3
+    //  A  D  M
+    //  0  0  0  null
+    //  0  0  1  M      Memory[A]
+    //  0  1  0  D      D
+    //  0  1  1  MD     Memory[A] and D
+    //  1  0  0  A
+    //  1  0  1  AM     A register and Memory[A]
+    //  1  1  0  AD     A register and D register
+    //  1  1  1  AMD    A register and Memory[A] and D register
+
+    // ALU: a=0 then x=D, y=A
+    // ALU: a=1 then x=D, y=M
+
+    
+    // Control destinations
+    Not(in=instruction[15], out=isAddress);
+    Or(a=isAddress, b=instruction[5], out=loadA); // loadA if isAddress or isD1(destA)
+    And(a=instruction[15], b=instruction[4], out=loadD); // loadD if isControl and isD2(DestD)
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    // Select inputs
+    And(a=instruction[15], b=true, out=selA); // if instruction[15] ? ALUOut : instruction
+    And(a=instruction[15], b=instruction[12], out=selY); // Y = selY ? M : A
+
+    // Control jumps
+    // j3[0] out > 0
+    // j2[1] out = 0
+    // j1[2] out < 0
+    // load = j1 & ng | j2 & zr | j3 & !(ng|zr)
+    
+    // j1 & ng
+    And(a=instruction[2], b=ng, out=j1andng);
+    // j2 & zr
+    And(a=instruction[1], b=zr, out=j2andzr);
+    // j3 & !(ng|zr)
+    Or(a=ng, b=zr, out=leq0);
+    Not(in=leq0, out=positive);
+    And(a=instruction[0], b=positive, out=j3andgt0);
+    
+    Or(a=j1andng, b=j2andzr, out=j1orj2);
+    Or(a=j1orj2, b=j3andgt0, out=anyJ);
+    And(a=anyJ, b=instruction[15], out=loadPC);
+}

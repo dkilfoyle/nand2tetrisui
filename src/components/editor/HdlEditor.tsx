@@ -3,7 +3,7 @@ import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseHdl } from "../../languages/hdl/hdlParser";
 import { compileHdl } from "../../languages/hdl/hdlCompiler";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { ELKNode } from "../schematic/elkBuilder";
 import { activeTabAtom, chipAtom, elkAtom, selectedPartAtom } from "../../store/atoms";
 import { IAstChip } from "../../languages/hdl/hdlInterface";
@@ -16,9 +16,9 @@ const buildChipDetail = (chip: IBuiltinChip) => {
   return `${chip.name}(${inputs}${outputs.length > 0 ? ", " : ""}${outputs})`;
 };
 
-const buildChipDocumentation = (chip: IBuiltinChip) => {
-  return buildChipDetail(chip) + "\n\n" + chip.documentation;
-};
+// const buildChipDocumentation = (chip: IBuiltinChip) => {
+//   return buildChipDetail(chip) + "\n\n" + chip.documentation;
+// };
 
 export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
@@ -28,9 +28,9 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
   const language = "hdl";
 
-  const [elk, setElk] = useAtom(elkAtom);
+  const setElk = useSetAtom(elkAtom);
   const [chip, setChip] = useAtom(chipAtom);
-  const [selectedPart, setSelectedPart] = useAtom(selectedPartAtom);
+  const setSelectedPart = useSetAtom(selectedPartAtom);
   const [activeTab] = useAtom(activeTabAtom);
   const [ast, setAst] = useState<IAstChip>();
 
@@ -111,9 +111,10 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
 
   useEffect(() => {
     if (monaco) {
-      monaco.editor.quickSuggestions = true;
+      // monaco.editor.quickSuggestions = true;
+      editor.current?.updateOptions({ quickSuggestions: true });
       const hoverDisposable = monaco.languages.registerHoverProvider("hdl", {
-        provideHover: (model, position, token) => {
+        provideHover: (model, position) => {
           const word = model.getWordAtPosition(position);
           if (!word) return;
           const builtin = builtinChips.find((builtin) => builtin.name == word.word);

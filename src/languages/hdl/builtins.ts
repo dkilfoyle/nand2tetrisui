@@ -336,6 +336,22 @@ if sel == 111 => [0,  0, 0, 0, 0, 0, 0, in]
     ],
     outputs: [{ name: "out", width: 16 }],
   },
+  {
+    name: "Controller",
+    inputs: [
+      { name: "instruction", width: 16 },
+      { name: "zr", width: 1 },
+      { name: "ng", width: 1 },
+    ],
+    outputs: [
+      { name: "writeM", width: 1 },
+      { name: "loadA", width: 1 },
+      { name: "loadD", width: 1 },
+      { name: "loadPC", width: 1 },
+      { name: "selA", width: 1 },
+      { name: "selY", width: 1 },
+    ],
+  },
   // "RAM4K",
   // "RAM16K",
   // "ROM32K",

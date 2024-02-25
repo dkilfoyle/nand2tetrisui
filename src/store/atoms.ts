@@ -3,7 +3,7 @@ import { Chip } from "../languages/hdl/Chip";
 import { IAstTst } from "../languages/tst/tstInterface";
 import { ELKNode } from "../components/schematic/elkBuilder";
 
-const defaultFile = "Project03/RAM64";
+const defaultFile = "Project05/Controller";
 
 export const chipAtom = atom<Chip | undefined>(undefined);
 chipAtom.debugLabel = "chip";
