@@ -352,6 +352,22 @@ if sel == 111 => [0,  0, 0, 0, 0, 0, 0, in]
       { name: "selY", width: 1 },
     ],
   },
+  {
+    name: "Debug",
+    inputs: [
+      { name: "x", width: 1 },
+      { name: "y", width: 1 },
+    ],
+    outputs: [{ name: "z", width: 1 }],
+  },
+  {
+    name: "Lander",
+    inputs: [
+      { name: "i", width: 1 },
+      { name: "j", width: 1 },
+    ],
+    outputs: [{ name: "k", width: 1 }],
+  },
   // "RAM4K",
   // "RAM16K",
   // "ROM32K",

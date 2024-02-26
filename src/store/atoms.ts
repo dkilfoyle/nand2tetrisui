@@ -1,9 +1,9 @@
 import { atom } from "jotai";
-import { Chip } from "../languages/hdl/Chip";
 import { IAstTst } from "../languages/tst/tstInterface";
 import { ELKNode } from "../components/schematic/elkBuilder";
+import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 
-const defaultFile = "Project05/Controller";
+const defaultFile = "Debug/Debug";
 
 export const chipAtom = atom<Chip | undefined>(undefined);
 chipAtom.debugLabel = "chip";

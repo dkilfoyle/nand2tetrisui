@@ -19,7 +19,7 @@
  * clocked: although they are affected by the instruction's execution, they commit to
  * their new values only in the next cycle.
  */
-CHIP CPU {
+CHIP CPUControl {
 
     IN  inM[16],         // M value input  (M = contents of RAM[A])
         instruction[16], // Instruction for execution

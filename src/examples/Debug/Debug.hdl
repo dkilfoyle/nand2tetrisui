@@ -1,0 +1,7 @@
+CHIP Debug {
+    IN x, y;
+    OUT z;
+    
+    PARTS:
+      Lander(i=x, j=y, k=z);
+}

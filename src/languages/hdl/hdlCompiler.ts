@@ -4,10 +4,11 @@ import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/s
 import { Connection } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
-import { ElkBuilder } from "../../components/schematic/elkBuilder";
+// import { ElkBuilder } from "../../components/schematic/elkBuilder";
 import { CompilationError, Span } from "../parserUtils";
 import { sourceCodes } from "../../examples/projects";
 import { parseHdl } from "./hdlParser";
+// import { ElkBuilder } from "../../components/schematic/elkBuilder";
 
 export const compileHdl = async (ast: IAstChip) => {
   return await new ChipBuilder(ast).build();
@@ -35,7 +36,7 @@ function isConstant(pinName: string): boolean {
   return pinName === "false" || pinName === "true" || pinName === "0" || pinName === "1";
 }
 
-function createWire(lhs: IAstPinParts, rhs: IAstPinParts): Connection {
+export function createWire(lhs: IAstPinParts, rhs: IAstPinParts): Connection {
   return {
     to: {
       name: lhs.name,
@@ -98,7 +99,7 @@ class ChipBuilder {
   private inPins: Map<string, Set<number>> = new Map();
   private outPins: Map<string, Set<number>> = new Map();
   private compileErrors: CompilationError[] = [];
-  private elkBuilder: ElkBuilder;
+  // private elkBuilder: ElkBuilder;
   constructor(private ast: IAstChip) {
     this.chip = new Chip(
       ast.inPins.map((pin) => ({ pin: pin.name, width: pin.width })),
@@ -107,30 +108,33 @@ class ChipBuilder {
       [],
       [] // todo: parse clocked pinlist
     );
-    this.elkBuilder = new ElkBuilder(this.chip);
+    // this.elkBuilder = new ElkBuilder(this.chip);
   }
   Err() {
     if (this.compileErrors.length == 0) throw Error();
-    return { chip: this.chip, compileErrors: this.compileErrors, elk: undefined };
+    return { chip: this.chip, compileErrors: this.compileErrors }; //, elk: undefined };
   }
   Ok() {
     if (this.compileErrors.length > 0) throw Error();
-    return { chip: this.chip, compileErrors: this.compileErrors, elk: this.elkBuilder.getELK() };
+    return { chip: this.chip, compileErrors: this.compileErrors }; //, elk: this.elkBuilder.getELK() };
   }
   async loadChip(name: string): Promise<Result<Chip>> {
     if (hasBuiltinChip(name)) return getBuiltinChip(name);
     const path = Object.keys(sourceCodes).find((fn) => fn.includes("/" + name + ".hdl"));
     if (!path) return Err(new Error(`Could not load source chip ${path}`));
+    // TODO: Cache compilation of userDefinedChips
     const code = sourceCodes[path];
     const { ast, parseErrors } = parseHdl(code);
     if (parseErrors.length > 0) return Err(new Error("Parse errors in source chip"));
     const { chip, compileErrors } = await compileHdl(ast);
-    if (compileErrors.length > 0) return Err(new Error("Compile errors in source chip"));
+    if (compileErrors.length > 0) {
+      return Err(new Error("Compile errors in source chip" + compileErrors[0].message));
+    }
     return Ok(chip);
   }
   async build() {
     this.compileErrors = [];
-    this.elkBuilder = new ElkBuilder(this.chip);
+    // this.elkBuilder = new ElkBuilder(this.chip);
     for (const part of this.ast.parts) {
       const builtin = await this.loadChip(part.name); // todo hdl can reference user defined chips from virtual fs
       if (isErr(builtin)) {
@@ -149,16 +153,16 @@ class ChipBuilder {
   }
 
   private wirePart(part: IAstPart, partChip: Chip) {
-    const wires: Connection[] = [];
     this.inPins.clear();
+    const partWires: Connection[] = [];
     for (const { lhs, rhs } of part.wires) {
       if (!this.validateWire(partChip, lhs, rhs)) return false;
       const newWire = createWire(lhs, rhs);
-      wires.push(newWire);
+      partWires.push(newWire);
     }
     try {
-      this.chip.wire(partChip, wires);
-      this.elkBuilder.wire(partChip, wires);
+      this.chip.wire(partChip, partWires);
+      // this.elkBuilder.wire(partChip, partWires);
       return true;
     } catch (e) {
       const err = e as CompilationError;

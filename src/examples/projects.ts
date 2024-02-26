@@ -1,3 +1,5 @@
+import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
+
 export const sourceCodes = {
   ...import.meta.glob(["./Debug/*.hdl", "./Debug/*.tst"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project01/*.hdl", "./Project01/*.tst"], { as: "raw", eager: true }),
@@ -7,7 +9,7 @@ export const sourceCodes = {
 };
 
 export const projects = [
-  { id: "Debug", name: "Debug", children: ["BugMux", "DebugMux"] },
+  { id: "Debug", name: "Debug", children: ["Debug", "Ander"] },
   {
     id: "Project01",
     name: "Project01",
@@ -34,3 +36,9 @@ export const projects = [
   { id: "Project03", name: "Project03", children: ["DFF", "Bit", "Register", "RAM8", "RAM64", "RAM512", "RAM4K", "RAM16K", "PC"] },
   { id: "Project05", name: "Project05", children: ["Memory", "Controller", "CPU", "CPUControl"] },
 ];
+
+// console.log("Pre-compiling userdefined chips...");
+export const userDefinedChips = Object.keys(sourceCodes)
+  .filter((path) => path.endsWith(".hdl"))
+  .map((path) => path.substring(path.lastIndexOf("/") + 1, path.indexOf(".hdl")))
+  .filter((chip) => !hasBuiltinChip(chip));

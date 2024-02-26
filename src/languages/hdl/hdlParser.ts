@@ -51,6 +51,11 @@ const INT = addToken({ name: "INT", pattern: /[0-9]+/ });
 
 const chips: Record<string, TokenType> = {};
 const chipsCategory = addToken({ name: "chips", pattern: Lexer.NA });
+
+// Object.keys(sourceCodes).filter(fn => fn.endsWith(".hdl")).forEach(fn => {
+//   const chipName =
+// })
+
 builtinChips.forEach((chip) => {
   chips[chip.name] = addToken({ name: chip.name, pattern: chip.name, longer_alt: ID, categories: [chipsCategory] });
 });

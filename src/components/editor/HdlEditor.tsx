@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { parseHdl } from "../../languages/hdl/hdlParser";
 import { compileHdl } from "../../languages/hdl/hdlCompiler";
 import { useAtom, useSetAtom } from "jotai";
-import { ELKNode } from "../schematic/elkBuilder";
+import { ELKNode, compileElk } from "../schematic/elkBuilder";
 import { activeTabAtom, chipAtom, elkAtom, selectedPartAtom } from "../../store/atoms";
 import { IAstChip } from "../../languages/hdl/hdlInterface";
 import { IBuiltinChip, builtinChips } from "../../languages/hdl/builtins";
@@ -63,11 +63,12 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
         if (parseErrors.length > 0) setErrors(parseErrors);
         else {
           setAst(ast);
-          compileHdl(ast).then(({ chip: newchip, compileErrors, elk: newelk }) => {
+          compileHdl(ast).then(({ chip: newchip, compileErrors }) => {
             setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
             if (compileErrors.length == 0 && activeTab == name) {
-              setElk(newelk as ELKNode);
               setChip(newchip);
+              const newelk = compileElk(newchip, ast);
+              setElk(newelk!);
             }
           });
         }

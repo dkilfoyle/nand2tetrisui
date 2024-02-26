@@ -1,0 +1,7 @@
+CHIP Lander {
+    IN i, j;
+    OUT k;
+    
+    PARTS:
+      And(a=i, b=j, out=k);
+}
