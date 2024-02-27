@@ -3,5 +3,6 @@ CHIP Debug {
     OUT z;
     
     PARTS:
-      Lander(i=x, j=y, k=z);
+      Or(a=x, b=y, out=w);
+      Lander(i=x, j=w, k=z);
 }

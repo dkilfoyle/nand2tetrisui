@@ -14,6 +14,16 @@ export const compileHdl = async (ast: IAstChip) => {
   return await new ChipBuilder(ast).build();
 };
 
+export const compileHdlFromSource = (code: string) => {
+  const { ast, parseErrors } = parseHdl(code);
+  if (parseErrors.length > 0) return Err(new Error("compile from source parse errors"));
+  const result = compileHdl(ast).then(({ chip: newchip, compileErrors }) => {
+    if (compileErrors.length > 0) return Err(new Error("compile from source compile errors"));
+    else return Ok({ chip: newchip, ast });
+  });
+  return result;
+};
+
 function pinWidth(start: number, end: number | undefined): number | undefined {
   if (end === undefined) {
     return undefined;

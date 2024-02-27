@@ -67,7 +67,7 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
             setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
             if (compileErrors.length == 0 && activeTab == name) {
               setChip(newchip);
-              const newelk = compileElk(newchip, ast);
+              const newelk = compileElk(newchip, ast, newchip.name!);
               setElk(newelk!);
             }
           });
