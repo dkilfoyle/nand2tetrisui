@@ -14,6 +14,8 @@ interface ELKEdge {
   targetPort: string;
   hwMeta: {
     name: string;
+    from: PinSide;
+    to: PinSide;
   };
 }
 
@@ -53,7 +55,11 @@ export const compileElk = (chip: Chip, ast: IAstChip, chipid: string, embedded =
 
 export const compileElkFromSource = async (code: string, chipid: string, embedded = true) => {
   const compileResult = await compileHdlFromSource(code);
-  if (isErr(compileResult)) throw Error("Unable to compile from source");
+  if (isErr(compileResult)) {
+    console.log(compileResult);
+    throw Error("Unable to compile from source");
+  }
+
   const { chip, ast } = Ok(compileResult);
   return new ElkBuilder(chip, ast, chipid, embedded).getELK();
 };
@@ -99,7 +105,7 @@ export class ElkBuilder {
             sourcePort: `${partId}_${to.name}`,
             target: `${this.chipid}`,
             targetPort: `${this.chipid}_${from.name}`,
-            hwMeta: { name: `${partId}_${to.name}` },
+            hwMeta: { name: `${partId}_${to.name}`, from: to, to: from },
           });
         } else if (this.chip.hasIn(from.name)) {
           throw Error();
@@ -130,16 +136,18 @@ export class ElkBuilder {
             sourcePort: `${this.chipid}_${from.name}`,
             target: partId,
             targetPort: `${partId}_${to.name}`,
-            hwMeta: { name: `${this.chipid}_${from.name}` },
+            hwMeta: { name: `${this.chipid}_${from.name}`, from, to },
           });
         } else {
+          // if from.width > to.width
+
           this.wires.push({
             id: (ElkBuilder.edgeCount++).toString(), //`${this.wires.length}`,
             source: "_ALIAS_",
             sourcePort: from.name, // to be post-processed to this.ports.get(from.name)
             target: partId,
             targetPort: `${partId}_${to.name}`,
-            hwMeta: { name: this.pinSideToString(from) },
+            hwMeta: { name: this.pinSideToString(from), from, to },
           });
         }
       }
@@ -291,7 +299,7 @@ export class ElkBuilder {
         //children.push(this.chipToNode(part, this.partIds[i], true));
         //TODO:
         // parse part source to get ast
-        const filename = Object.keys(sourceCodes).find((path) => path.includes(part.name!));
+        const filename = Object.keys(sourceCodes).find((path) => path.includes(part.name! + ".hdl"));
         if (!filename) throw Error("Unable to find source code for " + part.name);
         const subelk = await compileElkFromSource(sourceCodes[filename], this.partIds[i], true);
         children.push(subelk);
@@ -311,6 +319,20 @@ export class ElkBuilder {
     };
   }
 
+  findPort(elk: ELKNode, portId: string) {
+    const extport = elk.children?.find((node) => node.id == portId + ":ext");
+    if (extport) return extport.ports[0];
+    let foundport: ELKPort;
+    elk.children?.find((node) =>
+      node.ports.find((port) => {
+        if (port.id == portId) {
+          foundport = port;
+          return true;
+        } else return false;
+      })
+    );
+  }
+
   getELK() {
     // console.log("ELK", this);
     this.ast.parts.forEach((part, i) => {
@@ -321,6 +343,9 @@ export class ElkBuilder {
       }
       this.wire([...this.chip.parts.values()][i], partWires);
     });
+
+    const sliceWires: ELKEdge[] = [];
+    const newWires: ELKEdge[] = [];
 
     this.wires.forEach((wire) => {
       if (wire.source == "_ALIAS_") {
@@ -342,8 +367,69 @@ export class ElkBuilder {
           wire.target = wire.targetPort + ":ext";
         }
       }
+      if (wire.hwMeta.from.width != wire.hwMeta.to.width) {
+        // Create new wire from wire.source/port to sourcePort:slice_in if does not exist
+        // change this wire to use sourcePort:slice[start]
+        const sliceNodeId = `${wire.sourcePort}:slice`;
+        const slicePortId = `${sliceNodeId}[${wire.hwMeta.from.start}]`;
+        if (!newWires.find((newWire) => newWire.targetPort == `${sliceNodeId}_in`)) {
+          const newWire = { ...wire, target: sliceNodeId, targetPort: `${sliceNodeId}_in`, id: (ElkBuilder.edgeCount++).toString() };
+          const pinName = wire.sourcePort.split("_").pop();
+          newWire.hwMeta.name = pinName + `[${this.chip.get(pinName!)!.width - 1}:0]` || wire.sourcePort;
+          newWires.push(newWire);
+        }
+        wire.source = sliceNodeId;
+        wire.sourcePort = slicePortId; // todo [start+width-1, start]
+        sliceWires.push(wire);
+      }
     });
+    this.wires.push(...newWires);
     const elk = this.chipToNode(this.chip);
+
+    const sliceNodes: Record<string, ELKNode> = {};
+    sliceWires.forEach((wire) => {
+      const pin = this.findPort(elk, wire.sourcePort.substr(0, wire.sourcePort.indexOf(":")))?.hwMeta.pin;
+      if (!pin) throw Error("Unable to find pin for port " + wire.sourcePort);
+
+      if (!sliceNodes[wire.source]) {
+        sliceNodes[wire.source] = {
+          hwMeta: { cls: "Operator", maxId: 2000, name: "SLICE" },
+          id: wire.source,
+          ports: [
+            {
+              hwMeta: { connectedAsParent: false, level: 0, name: "", cssClass: "", cssStyle: "", pin },
+              direction: "INPUT",
+              id: `${wire.source}_in`,
+              children: [],
+              properties: { index: 0, side: "WEST" },
+            },
+          ],
+          children: undefined,
+          edges: [],
+          properties: {
+            "org.eclipse.elk.layered.mergeEdges": 1,
+            "org.eclipse.elk.portConstraints": "FIXED_ORDER",
+          },
+        };
+      }
+      const sliceNode = sliceNodes[wire.source];
+      if (!sliceNode.ports.find((slicerPort) => slicerPort.id == wire.sourcePort))
+        sliceNode.ports.push({
+          hwMeta: { connectedAsParent: false, level: 0, name: `[${wire.hwMeta.from.start}]`, cssClass: "", cssStyle: "", pin },
+          direction: "OUTPUT",
+          id: `${wire.sourcePort}`, // todo [start+width-1, start]
+          children: [],
+          properties: { index: sliceNode.ports.length, side: "EAST" },
+        });
+    });
+
+    Object.values(sliceNodes).forEach((sliceNode) => {
+      sliceNode.ports.sort((a, b) => parseInt(b.hwMeta.name.slice(1, -1)) - parseInt(a.hwMeta.name.slice(1, -1)));
+      sliceNode.ports.filter((port) => port.direction == "OUTPUT").forEach((port, i) => (port.properties.index = i));
+    });
+
+    elk.children?.push(...Object.values(sliceNodes));
+
     console.log("elk: ", elk);
     return elk;
   }

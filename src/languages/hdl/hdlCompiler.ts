@@ -16,7 +16,9 @@ export const compileHdl = async (ast: IAstChip) => {
 
 export const compileHdlFromSource = (code: string) => {
   const { ast, parseErrors } = parseHdl(code);
-  if (parseErrors.length > 0) return Err(new Error("compile from source parse errors"));
+  if (parseErrors.length > 0) {
+    return Err(new Error("compile from source parse errors " + parseErrors[0].message));
+  }
   const result = compileHdl(ast).then(({ chip: newchip, compileErrors }) => {
     if (compileErrors.length > 0) return Err(new Error("compile from source compile errors"));
     else return Ok({ chip: newchip, ast });
