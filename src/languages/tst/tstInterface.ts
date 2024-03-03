@@ -1,11 +1,28 @@
 import { Span } from "../parserUtils";
 
 export interface IAstTst {
-  statements: IAstTstStatement[];
+  commands: IAstTstCommand[];
   outputFormats: IAstTstOutputFormat;
 }
 
+export type IAstTstCommand = IAstTstStatement | IAstTstRepeat | IAstTstWhile;
+
+export interface IAstTstRepeat {
+  commandName: "repeat";
+  n: number;
+  statements: IAstTstStatement[];
+  span: Span;
+}
+
+export interface IAstTstWhile {
+  commandName: "while";
+  condition: { lhs: string; compareOp: string; rhs: string };
+  statements: IAstTstStatement[];
+  span: Span;
+}
+
 export interface IAstTstStatement {
+  commandName: "statement";
   operations: IAstTstOperation[];
   span: Span;
 }

@@ -144,12 +144,10 @@ export function TstEditor({
         <Button
           size="xs"
           onClick={onStep}
-          isDisabled={
-            tests == null || tests.ast.statements.length == 0 || selectedTest == null || selectedTest == tests.ast.statements.length - 1
-          }>
+          isDisabled={tests == null || tests.ast.commands.length == 0 || selectedTest == null || selectedTest == tests.ast.commands.length - 1}>
           Step
         </Button>
-        <Button size="xs" onClick={onRun} isDisabled={tests == null || selectedTest == null || tests.ast.statements.length == 0}>
+        <Button size="xs" onClick={onRun} isDisabled={tests == null || selectedTest == null || tests.ast.commands.length == 0}>
           Run
         </Button>
         <span>{expanded}</span>

@@ -1,6 +1,14 @@
 import { EmbeddedActionsParser, IToken, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
 import { getTokenSpan, mergeSpans } from "../parserUtils";
-import { IAstTst, IAstTstNumberValue, IAstTstOperation, IAstTstOutputFormat, IAstTstStatement } from "./tstInterface";
+import {
+  IAstTst,
+  IAstTstCommand,
+  IAstTstNumberValue,
+  IAstTstOperation,
+  IAstTstOutputFormat,
+  IAstTstRepeat,
+  IAstTstStatement,
+} from "./tstInterface";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 
 const allTokens: TokenType[] = [];
@@ -30,8 +38,8 @@ addToken({
   line_breaks: true,
 });
 
-const IdToken = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9]*/ });
-const KeywordTokens = ["output-list", "set", "expect", "eval", "note", "output", "tick", "tock", "echo", "clear-echo"].reduce(
+const IdToken = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9.]*/ });
+const KeywordTokens = ["output-list", "set", "expect", "eval", "note", "output", "tick", "tock", "echo", "clear-echo", "repeat"].reduce(
   (keywordDict: Record<string, TokenType>, keyword) => {
     const t = addToken({ name: keyword, pattern: RegExp(keyword), longer_alt: IdToken });
     keywordDict[keyword] = t;
@@ -40,11 +48,13 @@ const KeywordTokens = ["output-list", "set", "expect", "eval", "note", "output",
   {}
 );
 
+KeywordTokens["loadROM"] = addToken({ name: "loadROM", pattern: /ROM32K load/ });
+
 const StringToken = addToken({ name: "String", pattern: /"[^<"]*"|'[^<']*'/ });
 // const FalseToken = addToken({ name: "True", pattern: /true/, longer_alt: IdToken });
 // const TrueToken = addToken({ name: "False", pattern: /false/, longer_alt: IdToken });
-// const LCurlyToken = addToken({ name: "LCurly", label: "{", pattern: /{/ });
-// const RCurlyToken = addToken({ name: "RCurly", label: "}", pattern: /}/ });
+const LCurlyToken = addToken({ name: "LCurly", label: "{", pattern: /{/ });
+const RCurlyToken = addToken({ name: "RCurly", label: "}", pattern: /}/ });
 // const LParenToken = addToken({ name: "LParen", label: "(", pattern: /\(/ });
 // const RParenToken = addToken({ name: "RParen", label: ")", pattern: /\)/ });
 const LSquareToken = addToken({ name: "LSquare", label: "[", pattern: /\[/ });
@@ -75,13 +85,32 @@ class TstParser extends EmbeddedActionsParser {
     this.OPTION(() => {
       outputFormats = this.SUBRULE(this.outputStatement);
     });
-
-    const statements: IAstTstStatement[] = [];
+    const commands: IAstTstCommand[] = [];
     this.AT_LEAST_ONE(() => {
-      const statement = this.SUBRULE(this.tstStatement);
-      statements.push(statement);
+      commands.push(
+        this.OR([
+          { ALT: () => this.SUBRULE(this.tstStatement) },
+          { ALT: () => this.SUBRULE(this.tstRepeat) },
+          // { ALT: () => this.SUBRULE(this.tstWhile) },
+        ])
+      );
     });
-    return { statements, outputFormats };
+    return { commands, outputFormats };
+  });
+
+  tstRepeat = this.RULE("tstRepeat", () => {
+    const r = this.CONSUME(KeywordTokens.repeat);
+    const n = this.CONSUME(IntegerToken);
+    this.CONSUME(LCurlyToken);
+    const statements: IAstTstStatement[] = [];
+    this.AT_LEAST_ONE(() => statements.push(this.SUBRULE(this.tstStatement)));
+    const closeCurly = this.CONSUME(RCurlyToken);
+    return {
+      commandName: "repeat",
+      n: parseInt(n.image),
+      statements,
+      span: mergeSpans(getTokenSpan(r), getTokenSpan(closeCurly)),
+    } as IAstTstRepeat;
   });
 
   outputStatement = this.RULE("outputStatement", () => {
@@ -97,19 +126,28 @@ class TstParser extends EmbeddedActionsParser {
 
   formatEntry = this.RULE("formatEntry", () => {
     const id = this.CONSUME(IdToken);
+    const index = this.OPTION(() => {
+      let indexNum: number | undefined = undefined;
+      this.CONSUME(LSquareToken);
+      this.OPTION1(() => {
+        indexNum = parseInt(this.CONSUME(IntegerToken).image);
+      });
+      this.CONSUME(RSquareToken);
+      return indexNum;
+    });
     const binary = this.OR([
       { ALT: () => this.CONSUME(BinaryToken) },
       { ALT: () => this.CONSUME(String2Token) },
       { ALT: () => this.CONSUME(DecimalToken) },
     ]);
     this.OPTION2(() => {
-      this.CONSUME(IntegerToken);
-      this.CONSUME(PeriodToken);
       this.CONSUME2(IntegerToken);
-      this.CONSUME2(PeriodToken);
+      this.CONSUME(PeriodToken);
       this.CONSUME3(IntegerToken);
+      this.CONSUME1(PeriodToken);
+      this.CONSUME4(IntegerToken);
     });
-    return { pinName: id.image, radix: binary.image == "%B" ? 2 : binary.image == "%D" ? 10 : undefined };
+    return { pinName: id.image, radix: binary.image == "%B" ? 2 : binary.image == "%D" ? 10 : undefined, index };
   });
 
   numberValue = this.RULE("numberValue", () => {
@@ -155,7 +193,11 @@ class TstParser extends EmbeddedActionsParser {
       DEF: () => operations.push(this.SUBRULE(this.tstOperation)),
     });
     this.CONSUME(SemiColonToken);
-    return { operations, span: mergeSpans(operations[0].span, operations[operations.length - 1].span) };
+    return {
+      commandName: "statement",
+      operations,
+      span: mergeSpans(operations[0].span, operations[operations.length - 1].span),
+    } as IAstTstStatement;
   });
 
   tstOperation = this.RULE("tstOperation", (): IAstTstOperation => {
@@ -169,6 +211,7 @@ class TstParser extends EmbeddedActionsParser {
       { ALT: () => (op = this.SUBRULE(this.tstNoteOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstEchoOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstClearEchoOperation)) },
+      { ALT: () => (op = this.SUBRULE(this.tstLoadROMOperation)) },
     ]);
     return op!;
   });
@@ -210,6 +253,17 @@ class TstParser extends EmbeddedActionsParser {
       opName: "note",
       note: "clear echo",
       span: getTokenSpan(c),
+    };
+  });
+
+  tstLoadROMOperation = this.RULE("tstLoadROMOperation", (): IAstTstOperation => {
+    const l = this.CONSUME(KeywordTokens.loadROM);
+    const fn = this.CONSUME2(IdToken);
+
+    return {
+      opName: "loadROM",
+      assignment: { id: "ROM32K", index: 0, value: fn.image },
+      span: mergeSpans(getTokenSpan(l, fn)),
     };
   });
 
@@ -282,14 +336,15 @@ export const checkTst = (ast: IAstTst, chip: Chip) => {
     console.log("not chip");
     return [];
   }
-  for (const statment of ast.statements) {
-    for (const operation of statment.operations) {
-      if (operation.opName == "set") {
-        if (!chip.hasIn(operation.assignment!.id)) return [{ message: "Set target is not a chip input", span: operation.span }];
-      } else if (operation.opName == "expect") {
-        if (!chip.hasOut(operation.assignment!.id)) return [{ message: "Expect target is not a chip out", span: operation.span }];
+  for (const command of ast.commands) {
+    if (command.commandName == "statement")
+      for (const operation of command.operations) {
+        if (operation.opName == "set") {
+          if (!chip.hasIn(operation.assignment!.id)) return [{ message: "Set target is not a chip input", span: operation.span }];
+        } else if (operation.opName == "expect") {
+          if (!chip.hasOut(operation.assignment!.id)) return [{ message: "Expect target is not a chip out", span: operation.span }];
+        }
       }
-    }
   }
   return [];
 };

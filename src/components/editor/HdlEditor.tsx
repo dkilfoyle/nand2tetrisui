@@ -120,12 +120,12 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
             endColumn: word.endColumn,
           };
           const partSuggestions = Object.values(builtinChips).map((chip) => {
-            const inputs = chip.inputs.map((input, n) => `${input.name}=$${n + 1}`).join(", ");
-            const outputs = chip.outputs.map((output, n) => `${output.name}=$${n + 1}`).join(", ");
+            const inputs = chip.inputs.map((input, n) => `${input.name}=$${n + 1}`);
+            const outputs = chip.outputs.map((output, n) => `${output.name}=$${inputs.length + n + 1}`);
             return {
               label: chip.name,
               kind: monaco.languages.CompletionItemKind.Snippet,
-              insertText: `${chip.name}(${inputs}${outputs.length ? ", " : ""}${outputs});`,
+              insertText: `${chip.name}(${[...inputs, ...outputs].join(",")});`,
               insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
               documentation: chip.documentation,
               detail: buildChipDetail(chip),

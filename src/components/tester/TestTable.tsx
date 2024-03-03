@@ -89,69 +89,70 @@ export function TestTable() {
     clock.reset();
 
     // if clocked chip then run all statements from 0 to selectedtest
-    const startStatement = chip.clocked ? 0 : selectedTest ?? 0;
-    const endStatement = selectedTest ?? tests.ast.statements.length - 1;
+    const startCommand = chip.clocked ? 0 : selectedTest ?? 0;
+    const endCommand = selectedTest ?? tests.ast.commands.length - 1;
 
-    for (let iStatement = startStatement; iStatement <= endStatement; iStatement++) {
-      if (iStatement > tests.ast.statements.length - 1) throw Error();
-      const testStatement = tests.ast.statements[iStatement];
+    for (let iCommand = startCommand; iCommand <= endCommand; iCommand++) {
+      if (iCommand > tests.ast.commands.length - 1) throw Error();
+      const testCommand = tests.ast.commands[iCommand];
       let note = "";
       let outputed = false;
-      for (const testOperation of testStatement.operations) {
-        if (testOperation.opName == "set") {
-          // inputValues.set(testOperation.assignment!.id, testOperation.assignment!.value);
-          const pinOrBus = chip.get(testOperation.assignment!.id, testOperation.assignment!.index);
-          const valueString = testOperation.assignment!.value;
-          const value = valueString.startsWith("%B")
-            ? parseInt(valueString.slice(2), 2)
-            : valueString.startsWith("%X")
-            ? parseInt(valueString.slice(2), 16)
-            : parseInt(valueString);
-          if (pinOrBus instanceof Bus) {
-            pinOrBus.busVoltage = value;
-          } else {
-            pinOrBus?.pull(value === 0 ? LOW : HIGH);
-          }
-        } else if (testOperation.opName == "eval") {
-          chip.eval();
-        } else if (testOperation.opName == "output") {
-          const row: Record<string, string> = {};
-          [...chip.ins.entries(), ...chip.outs.entries(), ...chip.pins.entries()].forEach((pin) => {
-            row[pin.name] =
-              tests.ast.outputFormats[pin.name] == 2 ? pin.busVoltage.toString(2).padStart(pin.width, "0") : toDecimal(pin.busVoltage);
-          });
-
-          if (compareRows.length > 0) {
-            const cmpRow = compareRows[rows.length];
-            Object.entries(cmpRow).forEach(([key, val]) => {
-              const pin = chip.outs.get(key) ?? chip.pins.get(key);
-
-              if (pin && val !== undefined)
-                if (tests.ast.outputFormats[key])
-                  row[key + "_e"] = tests.ast.outputFormats[key] == 2 ? val.padStart(pin.width || 16, "0") : val;
-                else row[key + "_e"] = val;
+      if (testCommand.commandName == "statement")
+        for (const testOperation of testCommand.operations) {
+          if (testOperation.opName == "set") {
+            // inputValues.set(testOperation.assignment!.id, testOperation.assignment!.value);
+            const pinOrBus = chip.get(testOperation.assignment!.id, testOperation.assignment!.index);
+            const valueString = testOperation.assignment!.value;
+            const value = valueString.startsWith("%B")
+              ? parseInt(valueString.slice(2), 2)
+              : valueString.startsWith("%X")
+              ? parseInt(valueString.slice(2), 16)
+              : parseInt(valueString);
+            if (pinOrBus instanceof Bus) {
+              pinOrBus.busVoltage = value;
+            } else {
+              pinOrBus?.pull(value === 0 ? LOW : HIGH);
+            }
+          } else if (testOperation.opName == "eval") {
+            chip.eval();
+          } else if (testOperation.opName == "output") {
+            const row: Record<string, string> = {};
+            [...chip.ins.entries(), ...chip.outs.entries(), ...chip.pins.entries()].forEach((pin) => {
+              row[pin.name] =
+                tests.ast.outputFormats[pin.name] == 2 ? pin.busVoltage.toString(2).padStart(pin.width, "0") : toDecimal(pin.busVoltage);
             });
+
+            if (compareRows.length > 0) {
+              const cmpRow = compareRows[rows.length];
+              Object.entries(cmpRow).forEach(([key, val]) => {
+                const pin = chip.outs.get(key) ?? chip.pins.get(key);
+
+                if (pin && val !== undefined)
+                  if (tests.ast.outputFormats[key])
+                    row[key + "_e"] = tests.ast.outputFormats[key] == 2 ? val.padStart(pin.width || 16, "0") : val;
+                  else row[key + "_e"] = val;
+              });
+            }
+            row.index = rows.length.toString();
+            if (chip.clocked) row.time = clock.toString();
+            row.note = note;
+            rows.push(row);
+            outputed = true;
+          } else if (testOperation.opName == "tick") {
+            chip.eval();
+            clock.tick();
+          } else if (testOperation.opName == "tock") {
+            chip.eval();
+            clock.tock();
+          } else if (testOperation.opName == "expect") {
+            const stringExpect = testOperation.assignment!.value;
+            rows[rows.length - 1][testOperation.assignment!.id + "_e"] = stringExpect.slice(stringExpect.startsWith("%B") ? 2 : 0);
+            // row[testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
+          } else if (testOperation.opName == "note") {
+            note = testOperation.note || "";
+            if (outputed) rows[rows.length - 1].note = note;
           }
-          row.index = rows.length.toString();
-          if (chip.clocked) row.time = clock.toString();
-          row.note = note;
-          rows.push(row);
-          outputed = true;
-        } else if (testOperation.opName == "tick") {
-          chip.eval();
-          clock.tick();
-        } else if (testOperation.opName == "tock") {
-          chip.eval();
-          clock.tock();
-        } else if (testOperation.opName == "expect") {
-          const stringExpect = testOperation.assignment!.value;
-          rows[rows.length - 1][testOperation.assignment!.id + "_e"] = stringExpect.slice(stringExpect.startsWith("%B") ? 2 : 0);
-          // row[testOperation.assignment!.id + "_e"] = testOperation.assignment!.value;
-        } else if (testOperation.opName == "note") {
-          note = testOperation.note || "";
-          if (outputed) rows[rows.length - 1].note = note;
         }
-      }
     }
 
     setPinsData(getPinsData(selectedPart || chip));

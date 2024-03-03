@@ -386,6 +386,34 @@ if sel == 111 => [0,  0, 0, 0, 0, 0, 0, in]
     ],
   },
   {
+    name: "CPU",
+    inputs: [
+      { name: "inM", width: 16 },
+      { name: "instruction", width: 16 },
+      { name: "reset", width: 1 },
+    ],
+    outputs: [
+      { name: "outM", width: 16 },
+      { name: "writeM", width: 1 },
+      { name: "addressM", width: 15 },
+      { name: "pc", width: 15 },
+    ],
+  },
+  {
+    name: "Memory",
+    inputs: [
+      { name: "in", width: 16 },
+      { name: "load", width: 1 },
+      { name: "address", width: 15 },
+    ],
+    outputs: [{ name: "out", width: 16 }],
+  },
+  {
+    name: "ROM32K",
+    inputs: [{ name: "in", width: 15 }],
+    outputs: [{ name: "out", width: 16 }],
+  },
+  {
     name: "Debug",
     inputs: [
       { name: "x", width: 1 },
