@@ -19,5 +19,20 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    //// Replace this comment with your code.
+    // Screen starts at 16384 = 0b100_0000_0000_0000 ie address[14]==1
+    // Keyboard is   at 24576 = 0b110_0000_0000_0000
+
+    // Address 14.13
+    // 00 RAM
+    // 01 RAM
+    // 10 Screen
+    // 11 Keyboard
+    DMux(in=load, sel=address[14], a=loadRAM, b=loadScreen); // assumes never try to load keyboard
+
+    RAM16K(in=in, address=address, load=loadRAM, out=outRAM);
+    Screen(in=in, address=address, load=loadScreen, out=outScreen);
+    Keyboard(out=outKeyboard);
+
+    Mux4Way16(a=outRAM, b=outRAM, c=outScreen, d=outKeyboard, sel=address[13..14], out=out);
+
 }

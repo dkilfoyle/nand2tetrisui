@@ -6,9 +6,20 @@ import { checkTst, parseTst } from "../../languages/tst/tstParser";
 
 import "./TstEditor.css";
 import { activeTabAtom, chipAtom, selectedTestAtom, testsAtom } from "../../store/atoms";
-import { Button, Flex, HStack } from "@chakra-ui/react";
+import { Button, Flex, IconButton, Spacer } from "@chakra-ui/react";
+import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 
-export function TstEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
+export function TstEditor({
+  name,
+  sourceCode,
+  expanded,
+  onExpandToggle,
+}: {
+  name: string;
+  sourceCode: string;
+  expanded: boolean;
+  onExpandToggle: () => void;
+}) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
@@ -42,7 +53,7 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
           setErrors(checkErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
           if (checkErrors.length == 0 && activeTab == name) {
             // console.log("TstEditor setTests:", ast);
-            setTests({ ast, tabName: activeTab, chipName: chip.name });
+            setTests({ ast, tabName: activeTab, chipName: chip.name! });
           }
         }
       }
@@ -125,23 +136,32 @@ export function TstEditor({ name, sourceCode }: { name: string; sourceCode: stri
   }, [setSelectedTest]);
 
   return (
-    <Flex direction="column" h="100%" gap="5px">
-      <HStack>
-        <Button size="sm" onClick={onReset}>
+    <Flex direction="column" h="100%" bg="white">
+      <Flex p="5px" gap="5px">
+        <Button size="xs" onClick={onReset}>
           Reset
         </Button>
         <Button
-          size="sm"
+          size="xs"
           onClick={onStep}
           isDisabled={
             tests == null || tests.ast.statements.length == 0 || selectedTest == null || selectedTest == tests.ast.statements.length - 1
           }>
           Step
         </Button>
-        <Button size="sm" onClick={onRun} isDisabled={tests == null || selectedTest == null || tests.ast.statements.length == 0}>
+        <Button size="xs" onClick={onRun} isDisabled={tests == null || selectedTest == null || tests.ast.statements.length == 0}>
           Run
         </Button>
-      </HStack>
+        <span>{expanded}</span>
+        <Spacer></Spacer>
+        <IconButton
+          size="xs"
+          icon={expanded ? <ChevronDownIcon /> : <ChevronUpIcon />}
+          aria-label="down"
+          variant="ghost"
+          onClick={onExpandToggle}
+        />
+      </Flex>
       <Editor language="tst" value={sourceCode} onChange={onValueChange} onMount={onMount} />
     </Flex>
   );

@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { parseHdl } from "../../languages/hdl/hdlParser";
 import { compileHdl } from "../../languages/hdl/hdlCompiler";
 import { useAtom, useSetAtom } from "jotai";
-import { ELKNode, compileElk } from "../schematic/elkBuilder";
-import { activeTabAtom, chipAtom, elkAtom, selectedPartAtom } from "../../store/atoms";
+import { activeTabAtom, chipAtom, compiledChipAtom, selectedPartAtom } from "../../store/atoms";
 import { IAstChip } from "../../languages/hdl/hdlInterface";
 import { IBuiltinChip, builtinChips } from "../../languages/hdl/builtins";
 import { useDebouncedCallback } from "use-debounce";
@@ -28,8 +27,8 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
   const language = "hdl";
 
-  const setElk = useSetAtom(elkAtom);
-  const [chip, setChip] = useAtom(chipAtom);
+  const setCompiledChip = useSetAtom(compiledChipAtom);
+  const [chip] = useAtom(chipAtom);
   const setSelectedPart = useSetAtom(selectedPartAtom);
   const [activeTab] = useAtom(activeTabAtom);
   const [ast, setAst] = useState<IAstChip>();
@@ -41,20 +40,7 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
     const model = editor.current.getModel();
     if (model === null) return;
     monaco.editor.setModelMarkers(model, language, errors);
-    if (errors.length > 0 && activeTab == name) {
-      setElk({
-        id: "0",
-        hwMeta: { maxId: 0, bodyText: errors[0].message, name: "error", cls: null },
-        ports: [],
-        edges: [],
-        children: [],
-        properties: {
-          "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
-          "org.eclipse.elk.layered.mergeEdges": 1,
-        },
-      } as ELKNode);
-    }
-  }, [errors, editor, monaco, language, setElk, activeTab, name]);
+  }, [errors, editor, monaco, language, activeTab, name]);
 
   const parseAndCompile = useDebouncedCallback(
     useCallback(
@@ -66,14 +52,12 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
           compileHdl(ast).then(({ chip: newchip, compileErrors }) => {
             setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
             if (compileErrors.length == 0 && activeTab == name) {
-              setChip(newchip);
-              const newelk = compileElk(newchip, ast, newchip.name!);
-              setElk(newelk!);
+              setCompiledChip({ chip: newchip, ast });
             }
           });
         }
       },
-      [activeTab, name, setChip, setElk]
+      [activeTab, name, setCompiledChip]
     ),
     500
   );
@@ -158,7 +142,7 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
             insertText: pin.name,
             detail: chip?.ins.has(pin.name) ? "Input" : chip?.outs.has(pin.name) ? "Output" : "Internal",
           }));
-          console.log(chipSuggestions);
+          // console.log(chipSuggestions);
 
           return { suggestions: line.includes("(") ? chipSuggestions : partSuggestions };
         },

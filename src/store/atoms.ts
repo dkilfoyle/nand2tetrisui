@@ -2,10 +2,14 @@ import { atom } from "jotai";
 import { IAstTst } from "../languages/tst/tstInterface";
 import { ELKNode } from "../components/schematic/elkBuilder";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
+import { IAstChip } from "../languages/hdl/hdlInterface";
 
-const defaultFile = "Project05/Controller";
+export const defaultFile = "Project05/Memory";
 
-export const chipAtom = atom<Chip | undefined>(undefined);
+export const compiledChipAtom = atom<{ chip: Chip; ast: IAstChip } | undefined>(undefined);
+compiledChipAtom.debugLabel = "compiledChip";
+
+export const chipAtom = atom((get) => get(compiledChipAtom)?.chip);
 chipAtom.debugLabel = "chip";
 
 export const testsAtom = atom<{ ast: IAstTst; tabName: string; chipName: string } | null>(null);

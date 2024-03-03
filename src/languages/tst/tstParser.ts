@@ -31,7 +31,7 @@ addToken({
 });
 
 const IdToken = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9]*/ });
-const KeywordTokens = ["output-list", "set", "expect", "eval", "note", "output", "tick", "tock"].reduce(
+const KeywordTokens = ["output-list", "set", "expect", "eval", "note", "output", "tick", "tock", "echo", "clear-echo"].reduce(
   (keywordDict: Record<string, TokenType>, keyword) => {
     const t = addToken({ name: keyword, pattern: RegExp(keyword), longer_alt: IdToken });
     keywordDict[keyword] = t;
@@ -53,6 +53,7 @@ const CommaToken = addToken({ name: "Comma", label: ",", pattern: /,/ });
 const SemiColonToken = addToken({ name: "SemiColon", label: ";", pattern: /;/ });
 // const EqualsToken = addToken({ name: "Equals", pattern: /=/ });
 const BinaryToken = addToken({ name: "BinaryToken", pattern: /%B/ });
+const HexToken = addToken({ name: "HexToken", pattern: /%X([0-9]|[A-F])+/ });
 // const PercentToken = addToken({ name: "PercentToken", pattern: /%/, longer_alt: BinaryToken });
 // const HexToken = addToken({ name: "HexToken", pattern: /%X/ });
 const MinusToken = addToken({ name: "MinusToken", pattern: /-/ });
@@ -115,7 +116,7 @@ class TstParser extends EmbeddedActionsParser {
     let val: IAstTstNumberValue | undefined;
     this.OR([
       { ALT: () => (val = this.SUBRULE(this.binaryNumber)) },
-      // { ALT: () => (val = this.SUBRULE(this.hexNumber)) },
+      { ALT: () => (val = this.SUBRULE(this.hexNumber)) },
       { ALT: () => (val = this.SUBRULE(this.decimalNumber)) },
     ]);
     if (val == undefined) throw Error();
@@ -131,6 +132,11 @@ class TstParser extends EmbeddedActionsParser {
       val += digit.image;
     });
     return { value: "%B" + val, span: mergeSpans(getTokenSpan(b), getTokenSpan(digit)) } as IAstTstNumberValue;
+  });
+
+  hexNumber = this.RULE("hexNumber", () => {
+    const h = this.CONSUME(HexToken);
+    return { value: h.image, span: getTokenSpan(h) } as IAstTstNumberValue;
   });
 
   decimalNumber = this.RULE("decimalNumber", () => {
@@ -161,6 +167,8 @@ class TstParser extends EmbeddedActionsParser {
       { ALT: () => (op = this.SUBRULE(this.tstClockOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstOutputOperation)) },
       { ALT: () => (op = this.SUBRULE(this.tstNoteOperation)) },
+      { ALT: () => (op = this.SUBRULE(this.tstEchoOperation)) },
+      { ALT: () => (op = this.SUBRULE(this.tstClearEchoOperation)) },
     ]);
     return op!;
   });
@@ -183,6 +191,25 @@ class TstParser extends EmbeddedActionsParser {
       opName: "note",
       note: str.image.substring(1, str.image.length - 1),
       span: getTokenSpan(nt, str),
+    };
+  });
+
+  tstEchoOperation = this.RULE("tstEchoOperation", (): IAstTstOperation => {
+    const nt = this.CONSUME(KeywordTokens.echo);
+    const str = this.CONSUME(StringToken);
+    return {
+      opName: "note",
+      note: str.image.substring(1, str.image.length - 1),
+      span: getTokenSpan(nt, str),
+    };
+  });
+
+  tstClearEchoOperation = this.RULE("tstClearEchoOperation", (): IAstTstOperation => {
+    const c = this.CONSUME(KeywordTokens["clear-echo"]);
+    return {
+      opName: "note",
+      note: "clear echo",
+      span: getTokenSpan(c),
     };
   });
 

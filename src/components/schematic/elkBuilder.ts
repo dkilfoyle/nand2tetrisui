@@ -74,6 +74,7 @@ export class ElkBuilder {
   idMap = new Map<string, number>();
   useTrue = false;
   useFalse = false;
+  pinMap = new Map<string, Pin>();
 
   constructor(public chip: Chip, private ast: IAstChip, private chipid: string, private embedded = false) {
     [...REGISTRY.keys(), ...userDefinedChips].forEach((name) => {
@@ -173,6 +174,7 @@ export class ElkBuilder {
     const ports: ELKPort[] = [];
     [...part.ins.entries()].forEach((inPin, index) => {
       const pinId = `${partId}_${inPin.name}`;
+      this.pinMap.set(pinId, inPin);
       ports.push({
         id: this.getElkId(pinId),
         direction: "INPUT",
@@ -183,6 +185,7 @@ export class ElkBuilder {
     });
     [...part.outs.entries()].forEach((outPin, index) => {
       const pinId = `${partId}_${outPin.name}`;
+      this.pinMap.set(pinId, outPin);
       ports.push({
         id: this.getElkId(pinId),
         direction: "OUTPUT",
@@ -218,6 +221,7 @@ export class ElkBuilder {
 
   chipPinToNode(pin: Pin, index: number, portType: "INPUT" | "OUTPUT"): ELKNode {
     const pinId = `${this.chip.name}_${pin.name}`;
+    this.pinMap.set(pinId, pin);
     return {
       hwMeta: { cls: null, isExternalPort: true, maxId: 0, name: pin.name },
       id: this.getElkId(pinId + ":ext"),
@@ -242,6 +246,7 @@ export class ElkBuilder {
   constToNode(value: string): ELKNode {
     const constPin = new Bus(value);
     constPin.busVoltage = value == "true" ? 1 : 0;
+    this.pinMap.set(`${this.chipid}_${value}`, constPin);
     return {
       hwMeta: { cls: null, isExternalPort: true, maxId: 0, name: value },
       id: `${this.chipid}_${value}:ext`,
@@ -319,22 +324,23 @@ export class ElkBuilder {
     };
   }
 
-  findPort(elk: ELKNode, portId: string) {
-    const extport = elk.children?.find((node) => node.id == portId + ":ext");
-    if (extport) return extport.ports[0];
-    let foundport: ELKPort;
-    elk.children?.find((node) =>
-      node.ports.find((port) => {
-        if (port.id == portId) {
-          foundport = port;
-          return true;
-        } else return false;
-      })
-    );
-  }
+  // findPort(elk: ELKNode, portId: string) {
+  //   const extport = elk.children?.find((node) => node.id == portId + ":ext");
+  //   if (extport) return extport.ports[0];
+  //   let foundport: ELKPort;
+  //   elk.children?.find((node) =>
+  //     node.ports.find((port) => {
+  //       if (port.id == portId) {
+  //         foundport = port;
+  //         return true;
+  //       } else return false;
+  //     })
+  //   );
+  // }
 
   getELK() {
     // console.log("ELK", this);
+
     this.ast.parts.forEach((part, i) => {
       const partWires: Connection[] = [];
       for (const { lhs, rhs } of part.wires) {
@@ -344,8 +350,16 @@ export class ElkBuilder {
       this.wire([...this.chip.parts.values()][i], partWires);
     });
 
+    const elk = this.chipToNode(this.chip);
+
     const sliceWires: ELKEdge[] = [];
     const newWires: ELKEdge[] = [];
+
+    const getSliceString = (pinSide: PinSide) => {
+      if (pinSide.width && pinSide.width > 1) {
+        return `[${pinSide.start + pinSide.width - 1}:${pinSide.start}]`;
+      } else return `[${pinSide.start}]`;
+    };
 
     this.wires.forEach((wire) => {
       if (wire.source == "_ALIAS_") {
@@ -368,14 +382,19 @@ export class ElkBuilder {
         }
       }
       if (wire.hwMeta.from.width != wire.hwMeta.to.width) {
+        console.log("Slicer needed:", wire);
         // Create new wire from wire.source/port to sourcePort:slice_in if does not exist
         // change this wire to use sourcePort:slice[start]
         const sliceNodeId = `${wire.sourcePort}:slice`;
-        const slicePortId = `${sliceNodeId}[${wire.hwMeta.from.start}]`;
+        const slicePortId = `${sliceNodeId}${getSliceString(wire.hwMeta.from)}]`;
+        this.pinMap.set(slicePortId, this.pinMap.get(wire.sourcePort)!);
         if (!newWires.find((newWire) => newWire.targetPort == `${sliceNodeId}_in`)) {
           const newWire = { ...wire, target: sliceNodeId, targetPort: `${sliceNodeId}_in`, id: (ElkBuilder.edgeCount++).toString() };
-          const pinName = wire.sourcePort.split("_").pop();
-          newWire.hwMeta.name = pinName + `[${this.chip.get(pinName!)!.width - 1}:0]` || wire.sourcePort;
+          const sourcePortSplit = wire.sourcePort.split("_"); // CPUControl_AGregister0_out
+          const pinName = sourcePortSplit.pop();
+          // if (!this.pinMap.get(wire.sourcePort)) debugger;
+          // newWire.hwMeta.name = pinName + `[${this.pinMap.get(wire.sourcePort).width - 1}:0]` || wire.sourcePort;
+          newWire.hwMeta.name = pinName + getSliceString(newWire.hwMeta.from);
           newWires.push(newWire);
         }
         wire.source = sliceNodeId;
@@ -384,11 +403,10 @@ export class ElkBuilder {
       }
     });
     this.wires.push(...newWires);
-    const elk = this.chipToNode(this.chip);
 
     const sliceNodes: Record<string, ELKNode> = {};
     sliceWires.forEach((wire) => {
-      const pin = this.findPort(elk, wire.sourcePort.substr(0, wire.sourcePort.indexOf(":")))?.hwMeta.pin;
+      const pin = this.pinMap.get(wire.sourcePort); // this.findPort(elk, wire.sourcePort.substr(0, wire.sourcePort.indexOf(":")))?.hwMeta.pin;
       if (!pin) throw Error("Unable to find pin for port " + wire.sourcePort);
 
       if (!sliceNodes[wire.source]) {
@@ -415,7 +433,7 @@ export class ElkBuilder {
       const sliceNode = sliceNodes[wire.source];
       if (!sliceNode.ports.find((slicerPort) => slicerPort.id == wire.sourcePort))
         sliceNode.ports.push({
-          hwMeta: { connectedAsParent: false, level: 0, name: `[${wire.hwMeta.from.start}]`, cssClass: "", cssStyle: "", pin },
+          hwMeta: { connectedAsParent: false, level: 0, name: getSliceString(wire.hwMeta.from), cssClass: "", cssStyle: "", pin },
           direction: "OUTPUT",
           id: `${wire.sourcePort}`, // todo [start+width-1, start]
           children: [],
@@ -429,6 +447,7 @@ export class ElkBuilder {
     });
 
     elk.children?.push(...Object.values(sliceNodes));
+    elk.edges = this.wires;
 
     console.log("elk: ", elk);
     return elk;

@@ -337,6 +337,39 @@ if sel == 111 => [0,  0, 0, 0, 0, 0, 0, in]
     outputs: [{ name: "out", width: 16 }],
   },
   {
+    name: "RAM4K",
+    inputs: [
+      { name: "in", width: 16 },
+      { name: "load", width: 1 },
+      { name: "address", width: 11 },
+    ],
+    outputs: [{ name: "out", width: 16 }],
+  },
+  {
+    name: "RAM16K",
+    inputs: [
+      { name: "in", width: 16 },
+      { name: "load", width: 1 },
+      { name: "address", width: 12 },
+    ],
+    outputs: [{ name: "out", width: 16 }],
+  },
+
+  {
+    name: "Screen",
+    inputs: [
+      { name: "in", width: 16 },
+      { name: "load", width: 1 },
+      { name: "address", width: 12 },
+    ],
+    outputs: [{ name: "out", width: 16 }],
+  },
+  {
+    name: "Keyboard",
+    inputs: [],
+    outputs: [{ name: "out", width: 16 }],
+  },
+  {
     name: "Controller",
     inputs: [
       { name: "instruction", width: 16 },
@@ -368,8 +401,6 @@ if sel == 111 => [0,  0, 0, 0, 0, 0, 0, in]
     ],
     outputs: [{ name: "k", width: 1 }],
   },
-  // "RAM4K",
-  // "RAM16K",
   // "ROM32K",
   // "Screen",
   // "Keyboard",

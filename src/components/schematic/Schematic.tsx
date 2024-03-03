@@ -1,15 +1,33 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import "d3-hwschematic/dist/d3-hwschematic.css";
 import "./schematic.css";
-import { chipAtom, elkAtom, selectedTestAtom } from "../../store/atoms";
+import { compiledChipAtom, selectedTestAtom } from "../../store/atoms";
+import { Button, Checkbox, Flex, Spacer } from "@chakra-ui/react";
+import { ELKNode, compileElk } from "./elkBuilder";
 
 export function Schematic() {
   const hwSchematic = useRef();
   const schematicRef = useRef<SVGSVGElement>(null);
-  const [elk, setElk] = useAtom(elkAtom);
   const [selectedTest] = useAtom(selectedTestAtom);
-  const [chip] = useAtom(chipAtom);
+  const [compiledChip] = useAtom(compiledChipAtom);
+  const [autoDraw, setAutoDraw] = useState(true);
+
+  const elk = useMemo(() => {
+    if (compiledChip && autoDraw) return compileElk(compiledChip.chip, compiledChip.ast, compiledChip.chip.name!);
+    else
+      return {
+        id: "0",
+        hwMeta: { maxId: 0, bodyText: "Empty Elk", name: "error", cls: null },
+        ports: [],
+        edges: [],
+        children: [],
+        properties: {
+          "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
+          "org.eclipse.elk.layered.mergeEdges": 1,
+        },
+      } as ELKNode;
+  }, [compiledChip, autoDraw]);
 
   useEffect(() => {
     // console.log("ELK:", elk);
@@ -41,17 +59,18 @@ export function Schematic() {
   }, [schematicRef]);
 
   useEffect(() => {
-    if (!chip) return;
+    if (!compiledChip) return;
     if (selectedTest == undefined) return;
     // console.log("selected Test output", selectedTest);
     // for (const pin of chip.outs.entries()) {
     //   console.log(pin.name, pin.voltage());
     // }
-    elk.children.forEach((child) => {
-      child.ports.forEach((port) => {
-        port.hwMeta.cssClass = port.hwMeta.pin.voltage() == 0 ? "portLow" : "portHigh";
+    if (elk.children)
+      elk.children.forEach((child) => {
+        child.ports.forEach((port) => {
+          port.hwMeta.cssClass = port.hwMeta.pin.voltage() == 0 ? "portLow" : "portHigh";
+        });
       });
-    });
     if (hwSchematic.current) {
       // console.log("resetting elk");
       hwSchematic.current.bindData(elk).then(
@@ -63,7 +82,17 @@ export function Schematic() {
         }
       );
     }
-  }, [chip, elk, selectedTest, hwSchematic]);
+  }, [compiledChip, elk, selectedTest, hwSchematic]);
 
-  return <svg id="schemmaticsvg" width={"100%"} height={"100%"} ref={schematicRef}></svg>;
+  return (
+    <Flex direction="column" h="100%">
+      <Flex direction="row" p="5px" gap="5px">
+        <Spacer />
+        <Checkbox isChecked={autoDraw} onChange={(e) => setAutoDraw(e.target.checked)} size="sm">
+          Auto
+        </Checkbox>
+      </Flex>
+      <svg id="schemmaticsvg" width={"100%"} height={"100%"} ref={schematicRef}></svg>;
+    </Flex>
+  );
 }

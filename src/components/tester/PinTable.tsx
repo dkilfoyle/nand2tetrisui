@@ -1,10 +1,10 @@
 import { AgGridReact } from "@ag-grid-community/react";
 import { Box } from "@chakra-ui/react";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { selectedPartAtom, selectedTestAtom } from "../../store/atoms";
-import { Pin } from "../../languages/hdl/Chip";
-import { ColDef } from "@ag-grid-community/core";
+import { ColDef, ValueGetterParams } from "@ag-grid-community/core";
+import { Pin } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 
 interface IPinRow {
   group: string;
@@ -25,7 +25,6 @@ export function PinTable() {
   const pinsData = useMemo<IPinRow[]>(() => {
     const rows: IPinRow[] = [];
     if (!part) return rows;
-    console.log(selectedTest);
     for (const pin of part.ins.entries()) {
       rows.push({ group: "Input", pin });
     }
@@ -35,7 +34,6 @@ export function PinTable() {
     for (const pin of part.outs.entries()) {
       rows.push({ group: "Output", pin });
     }
-    console.log(rows);
     return rows;
   }, [part, selectedTest]);
 
@@ -43,8 +41,6 @@ export function PinTable() {
     // const selectedRows = gridRef.current!.api.getSelectedRows();
     // console.log(selectedRows);
   }, []);
-
-  parseInt;
 
   // useEffect(() => {
   //   console.log("PinTable", part);

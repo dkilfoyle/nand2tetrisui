@@ -1,12 +1,12 @@
 import { useAtom } from "jotai";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { AgGridReact } from "@ag-grid-community/react";
 import "@ag-grid-community/styles/ag-grid.css";
 import "@ag-grid-community/styles/ag-theme-quartz.css";
 import { CellClassParams, ColDef, ModuleRegistry, RowDataUpdatedEvent } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
-import { Badge, Flex, HStack } from "@chakra-ui/react";
+import { Badge, Checkbox, Flex, Spacer } from "@chakra-ui/react";
 import { Bus, HIGH, LOW, Pin } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom } from "../../store/atoms";
 import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
@@ -16,7 +16,7 @@ import "./TestTable.css";
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
-type ITest = Record<string, any>;
+type ITest = Record<string, string>;
 
 const toDecimal = (i: number): string => {
   i = i & 0xffff;
@@ -38,6 +38,7 @@ export function TestTable() {
   const [, setPinsData] = useAtom(pinsDataAtom);
   // const [activeTab] = useAtom(activeTabAtom);
   const [selectedTest] = useAtom(selectedTestAtom);
+  const [autoUpdate, setAutoUpdate] = useState(true);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
 
@@ -79,6 +80,7 @@ export function TestTable() {
   const rowData = useMemo(() => {
     if (!tests) return [];
     if (!chip) return [];
+    if (!autoUpdate) return [];
     if (selectedTest == -1) return [];
     // const inputValues = new Map<string, number>(); // keep track of input pin assigned values
     const rows: Record<string, number | undefined | string>[] = [];
@@ -100,7 +102,11 @@ export function TestTable() {
           // inputValues.set(testOperation.assignment!.id, testOperation.assignment!.value);
           const pinOrBus = chip.get(testOperation.assignment!.id, testOperation.assignment!.index);
           const valueString = testOperation.assignment!.value;
-          const value = valueString.startsWith("%B") ? parseInt(valueString.slice(2), 2) : parseInt(valueString);
+          const value = valueString.startsWith("%B")
+            ? parseInt(valueString.slice(2), 2)
+            : valueString.startsWith("%X")
+            ? parseInt(valueString.slice(2), 16)
+            : parseInt(valueString);
           if (pinOrBus instanceof Bus) {
             pinOrBus.busVoltage = value;
           } else {
@@ -150,7 +156,7 @@ export function TestTable() {
 
     setPinsData(getPinsData(selectedPart || chip));
     return rows;
-  }, [tests, chip, selectedTest, setPinsData, selectedPart, compareRows]);
+  }, [tests, chip, autoUpdate, selectedTest, setPinsData, selectedPart, compareRows]);
 
   const colDefs = useMemo<ColDef[]>(() => {
     const getColWidth = (pin: Pin) => {
@@ -252,7 +258,7 @@ export function TestTable() {
 
   return (
     <Flex direction="column" padding={2} gap={2} w="100%" h="100%">
-      <HStack>
+      <Flex gap={2}>
         <h2>Test Results</h2>
         {outcome[1] == 0 && (
           <span>
@@ -264,7 +270,11 @@ export function TestTable() {
             Fail: <Badge colorScheme="red">{outcome[1]}</Badge> / <Badge colorScheme="purple">{outcome[1] + outcome[0]}</Badge>
           </span>
         )}
-      </HStack>
+        <Spacer />
+        <Checkbox size="sm" isChecked={autoUpdate} onChange={(e) => setAutoUpdate(e.target.checked)}>
+          Auto
+        </Checkbox>
+      </Flex>
       <AgGridReact
         className="ag-theme-quartz"
         ref={gridRef}
