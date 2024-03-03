@@ -9,8 +9,8 @@ import { FileTree } from "./components/fileTree/FileTree";
 import { PinTable } from "./components/tester/PinTable";
 import { RamTable } from "./components/tester/RamTable";
 import { FileTab } from "./components/FileTab";
-import { useAtom } from "jotai";
-import { activeTabAtom, defaultFile, openFilesAtom } from "./store/atoms";
+import { useAtom, useSetAtom } from "jotai";
+import { activeTabAtom, openFilesAtom } from "./store/atoms";
 import { registerLanguages } from "./components/editor/monarch/loader";
 registerLanguages();
 
@@ -40,26 +40,12 @@ const tabComponents = {
 
 export default function App() {
   const [openFiles] = useAtom(openFilesAtom);
-  const [activeTab, setActiveTab] = useAtom(activeTabAtom);
+  const setActiveTab = useSetAtom(activeTabAtom);
   const [api, setApi] = useState<DockviewApi>();
 
   // useEffect(() => {
   //   setTabIndex(openFiles.findIndex((openFile) => openFile == activeTab));
   // }, [activeTab, openFiles, setTabIndex]);
-
-  useEffect(() => {
-    if (!api) return () => {};
-
-    const disposables = [
-      api.onDidActivePanelChange((panel) => {
-        if (panel) setActiveTab(panel.id);
-      }),
-    ];
-
-    return () => {
-      disposables.forEach((dispoable) => dispoable.dispose());
-    };
-  }, [api]);
 
   useEffect(() => {
     if (!api) return;
@@ -127,6 +113,20 @@ export default function App() {
         });
     });
   }, [api, openFiles]);
+
+  useEffect(() => {
+    if (!api) return () => {};
+
+    const disposables = [
+      api.onDidActivePanelChange((panel) => {
+        if (panel?.group.id == "filesGroup") setActiveTab(panel.id);
+      }),
+    ];
+
+    return () => {
+      disposables.forEach((dispoable) => dispoable.dispose());
+    };
+  }, [api, setActiveTab]);
 
   const onReady = (event: DockviewReadyEvent) => {
     setApi(event.api);

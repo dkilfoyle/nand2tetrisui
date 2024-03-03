@@ -82,7 +82,7 @@ export function TstEditor({
       decorations?.clear();
       return;
     }
-    const statement = tests?.ast.statements[selectedTest];
+    const statement = tests?.ast.commands[selectedTest];
     decorations.set([
       {
         range: new monaco.Range(statement.span.startLineNumber, 1, statement.span.endLineNumber, 1),
@@ -128,7 +128,7 @@ export function TstEditor({
   }, [setSelectedTest, selectedTest]);
 
   const onRun = useCallback(() => {
-    if (tests !== null && tests.ast.statements.length > 0) setSelectedTest(tests.ast.statements.length - 1);
+    if (tests !== null && tests.ast.commands.length > 0) setSelectedTest(tests.ast.commands.length - 1);
   }, [setSelectedTest, tests]);
 
   const onReset = useCallback(() => {

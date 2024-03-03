@@ -5,7 +5,7 @@ export const sourceCodes = {
   ...import.meta.glob(["./Project01/*.hdl", "./Project01/*.tst"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project02/*.hdl", "./Project02/*.tst"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project03/*.hdl", "./Project03/*.tst", "./Project03/*.cmp"], { as: "raw", eager: true }),
-  ...import.meta.glob(["./Project05/*.hdl", "./Project05/*.tst", "./Project05/*.cmp"], { as: "raw", eager: true }),
+  ...import.meta.glob(["./Project05/*.hdl", "./Project05/*.tst", "./Project05/*.cmp", "./Project05/*.hack"], { as: "raw", eager: true }),
 };
 
 export const projects = [

@@ -4,7 +4,7 @@ import { ELKNode } from "../components/schematic/elkBuilder";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip } from "../languages/hdl/hdlInterface";
 
-export const defaultFile = "Project05/Memory";
+export const defaultFile = "Project05/Computer";
 
 export const compiledChipAtom = atom<{ chip: Chip; ast: IAstChip } | undefined>(undefined);
 compiledChipAtom.debugLabel = "compiledChip";

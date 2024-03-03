@@ -340,7 +340,8 @@ export const checkTst = (ast: IAstTst, chip: Chip) => {
     if (command.commandName == "statement")
       for (const operation of command.operations) {
         if (operation.opName == "set") {
-          if (!chip.hasIn(operation.assignment!.id)) return [{ message: "Set target is not a chip input", span: operation.span }];
+          if (!(chip.hasIn(operation.assignment!.id) || [...chip.parts.values()].find((p) => p.name == operation.assignment!.id)))
+            return [{ message: "Set target is not a chip input or RAM part", span: operation.span }];
         } else if (operation.opName == "expect") {
           if (!chip.hasOut(operation.assignment!.id)) return [{ message: "Expect target is not a chip out", span: operation.span }];
         }

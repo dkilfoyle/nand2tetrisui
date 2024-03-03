@@ -8,7 +8,8 @@ import { CellClassParams, ColDef, ModuleRegistry, RowDataUpdatedEvent } from "@a
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Badge, Checkbox, Flex, Spacer } from "@chakra-ui/react";
 import { Bus, HIGH, LOW, Pin } from "@nand2tetris/web-ide/simulator/src/chip/chip";
-import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom } from "../../store/atoms";
+import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
+import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom, activeTabAtom } from "../../store/atoms";
 import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
 import { sourceCodes } from "../../examples/projects";
 
@@ -36,7 +37,7 @@ export function TestTable() {
   const [selectedPart] = useAtom(selectedPartAtom);
   const [, setSelectedTest] = useAtom(selectedTestAtom);
   const [, setPinsData] = useAtom(pinsDataAtom);
-  // const [activeTab] = useAtom(activeTabAtom);
+  const [activeTab] = useAtom(activeTabAtom);
   const [selectedTest] = useAtom(selectedTestAtom);
   const [autoUpdate, setAutoUpdate] = useState(true);
 
@@ -151,13 +152,27 @@ export function TestTable() {
           } else if (testOperation.opName == "note") {
             note = testOperation.note || "";
             if (outputed) rows[rows.length - 1].note = note;
+          } else if (testOperation.opName == "loadROM") {
+            const rom = [...chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
+            if (!rom) throw Error("Trying to loadROM but no ROM32K part found");
+            if (!testOperation.assignment?.value) throw Error("loadROM missing filename");
+            const path = activeTab.substring(0, activeTab.lastIndexOf("/"));
+            const fn = `./${path}/${testOperation.assignment.value}`;
+            console.log("loading ROM32K", fn);
+            const source = sourceCodes[fn];
+            if (!source) throw Error("Source code for ROM not found");
+            source
+              .split("\n")
+              .filter((line) => line.trim() != "")
+              .map((i) => parseInt(i.replaceAll(" ", ""), 2) & 0xffff)
+              .forEach((v, i) => (rom.at(i).busVoltage = v));
           }
         }
     }
 
     setPinsData(getPinsData(selectedPart || chip));
     return rows;
-  }, [tests, chip, autoUpdate, selectedTest, setPinsData, selectedPart, compareRows]);
+  }, [tests, chip, autoUpdate, selectedTest, setPinsData, selectedPart, compareRows, activeTab]);
 
   const colDefs = useMemo<ColDef[]>(() => {
     const getColWidth = (pin: Pin) => {
