@@ -35,8 +35,10 @@ interface ELKPort {
 }
 
 export interface ELKNode {
-  edges: ELKEdge[];
-  children: ELKNode[] | undefined;
+  edges?: ELKEdge[] | undefined;
+  _edges?: ELKEdge[] | undefined;
+  children?: ELKNode[] | undefined;
+  _children?: ELKNode[] | undefined;
   ports: ELKPort[];
   id: string;
   hwMeta: {
@@ -300,28 +302,30 @@ export class ElkBuilder {
     }
     // chip parts to nodes
     [...chip.parts.values()].forEach(async (part, i) => {
-      if (part.parts.size > 0) {
-        //children.push(this.chipToNode(part, this.partIds[i], true));
-        //TODO:
-        // parse part source to get ast
-        const filename = Object.keys(sourceCodes).find((path) => path.includes(part.name! + ".hdl"));
+      // if (part.parts.size > 0) {
+      const filename = Object.keys(sourceCodes).find((path) => path.includes(part.name! + ".hdl"));
+      if (!this.embedded && filename) {
+        // allow 1 level embedding
         if (!filename) throw Error("Unable to find source code for " + part.name);
         const subelk = await compileElkFromSource(sourceCodes[filename], this.partIds[i], true);
         children.push(subelk);
         // children.push(this.partToNode(part, this.partIds[i]));
       } else children.push(this.partToNode(part, this.partIds[i]));
     });
-    return {
+    const res = {
       id: this.chipid,
       hwMeta,
-      children,
-      edges: this.wires,
+      // children: undefined,
+      // _children: undefined,
+      // edges: this.wires,
       ports,
       properties: {
         "org.eclipse.elk.layered.mergeEdges": 1,
         "org.eclipse.elk.portConstraints": "FIXED_ORDER",
       },
     };
+    if (this.embedded) return { ...res, _children: children, _edges: this.wires };
+    else return { ...res, children, edges: this.wires };
   }
 
   // findPort(elk: ELKNode, portId: string) {
@@ -446,8 +450,13 @@ export class ElkBuilder {
       sliceNode.ports.filter((port) => port.direction == "OUTPUT").forEach((port, i) => (port.properties.index = i));
     });
 
-    elk.children?.push(...Object.values(sliceNodes));
-    elk.edges = this.wires;
+    if (this.embedded) {
+      elk._children?.push(...Object.values(sliceNodes));
+      elk._edges = this.wires;
+    } else {
+      elk.children?.push(...Object.values(sliceNodes));
+      elk.edges = this.wires;
+    }
 
     console.log("elk: ", elk);
     return elk;

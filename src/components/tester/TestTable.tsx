@@ -155,7 +155,6 @@ export function TestTable() {
                         chip.get(opf.pinName, opf.index)?.busVoltage.toString() || "?";
                   });
                 } else {
-                  console.log(tests.ast.outputFormats);
                   tests.ast.outputFormats.forEach((opf) => {
                     if (opf.pinName == "ARegister" || opf.pinName == "DRegister" || opf.pinName == "PC") {
                       const cpu = getChipPart(chip, "CPU");
@@ -207,7 +206,7 @@ export function TestTable() {
               if (!testOperation.assignment?.value) throw Error("loadROM missing filename");
               const path = activeTab.substring(0, activeTab.lastIndexOf("/"));
               const fn = `./${path}/${testOperation.assignment.value}`;
-              console.log("loading ROM32K", fn);
+              // console.log("loading ROM32K", fn);
               const source = sourceCodes[fn];
               if (!source) throw Error("Source code for ROM not found");
               source
@@ -278,6 +277,7 @@ export function TestTable() {
         }
       });
     defs.push({ field: "note", width: 200 });
+    console.log("coldefs", defs);
     return defs;
   }, [chip, tests?.ast.outputFormats]);
 
@@ -292,7 +292,7 @@ export function TestTable() {
   const onSelectionChanged = useCallback(() => {
     if (!chip) return;
     const selectedRows = gridRef.current!.api.getSelectedRows();
-    console.log("onselectionChange", selectedRows);
+    // console.log("onselectionChange", selectedRows);
     if (selectedRows.length > 0) {
       // // TODO: Instead of rerunning store a copy of pinstates at end of every test statement
       // chip?.reset();
