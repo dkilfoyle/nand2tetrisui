@@ -382,7 +382,7 @@ export class ElkBuilder {
         }
       }
       if (wire.hwMeta.from.width != wire.hwMeta.to.width) {
-        console.log("Slicer needed:", wire);
+        // console.log("Slicer needed:", wire);
         // Create new wire from wire.source/port to sourcePort:slice_in if does not exist
         // change this wire to use sourcePort:slice[start]
         const sliceNodeId = `${wire.sourcePort}:slice`;

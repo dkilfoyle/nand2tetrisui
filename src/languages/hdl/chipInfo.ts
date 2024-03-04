@@ -1,4 +1,4 @@
-export interface IBuiltinChip {
+export interface IChipInfo {
   name: string;
   documentation?: string;
   inputs: { name: string; width: number }[];
@@ -15,7 +15,7 @@ export interface IBuiltinChip {
 //   }
 // }
 
-export const builtinChips: IBuiltinChip[] = [
+export const chipInfo: IChipInfo[] = [
   {
     name: "Not16",
     inputs: [
@@ -410,7 +410,7 @@ if sel == 111 => [0,  0, 0, 0, 0, 0, 0, in]
   },
   {
     name: "ROM32K",
-    inputs: [{ name: "in", width: 15 }],
+    inputs: [{ name: "address", width: 15 }],
     outputs: [{ name: "out", width: 16 }],
   },
   {

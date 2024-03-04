@@ -81,7 +81,7 @@ class TstParser extends EmbeddedActionsParser {
   }
 
   public tests = this.RULE("tests", () => {
-    let outputFormats: IAstTstOutputFormat = {};
+    let outputFormats: IAstTstOutputFormat[] = [];
     this.OPTION(() => {
       outputFormats = this.SUBRULE(this.outputStatement);
     });
@@ -115,10 +115,10 @@ class TstParser extends EmbeddedActionsParser {
 
   outputStatement = this.RULE("outputStatement", () => {
     this.CONSUME(KeywordTokens["output-list"]);
-    const formats: IAstTstOutputFormat = {};
+    const formats: IAstTstOutputFormat[] = [];
     this.AT_LEAST_ONE(() => {
-      const { pinName, radix } = this.SUBRULE(this.formatEntry);
-      formats[pinName] = radix!;
+      const { pinName, radix, index } = this.SUBRULE(this.formatEntry);
+      formats.push({ pinName, radix, index });
     });
     this.CONSUME(SemiColonToken);
     return formats;
@@ -147,7 +147,7 @@ class TstParser extends EmbeddedActionsParser {
       this.CONSUME1(PeriodToken);
       this.CONSUME4(IntegerToken);
     });
-    return { pinName: id.image, radix: binary.image == "%B" ? 2 : binary.image == "%D" ? 10 : undefined, index };
+    return { pinName: id.image, radix: binary.image == "%B" ? 2 : binary.image == "%D" ? 10 : 10, index };
   });
 
   numberValue = this.RULE("numberValue", () => {

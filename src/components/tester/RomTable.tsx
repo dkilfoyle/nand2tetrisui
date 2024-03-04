@@ -5,32 +5,30 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { selectedPartAtom } from "../../store/atoms";
 import { ColDef } from "@ag-grid-community/core";
 import { RAM } from "@nand2tetris/web-ide/simulator/src/chip/builtins/sequential/ram.tsx";
+import { disassemble } from "../../languages/asm/disassembler";
 
-interface IRamRow {
+interface IRomRow {
   address: number;
-  value: number;
+  value: string;
+  asm: string;
 }
 
-export function RamTable() {
+export function RomTable() {
   const [part] = useAtom(selectedPartAtom);
-  const gridRef = useRef<AgGridReact<IRamRow>>(null);
+  const gridRef = useRef<AgGridReact<IRomRow>>(null);
 
   const [colDefs] = useState<ColDef[]>([
     { field: "address", width: 100 },
     { field: "value", width: 100 },
+    { field: "asm", width: 200 },
   ]);
 
-  const rowData = useMemo<IRamRow[]>(() => {
-    console.log(part?.name, part?.parts);
+  const rowData = useMemo<IRomRow[]>(() => {
     if (part && Object.prototype.hasOwnProperty.call(part, "_memory")) {
       const p = part as unknown as RAM;
-      return Array.from(p.memory.map((address, value) => ({ address, value })));
-    } else if (part && part.name == "Memory") {
-      const p = [...part.parts.values()][2];
-      console.log("found memory", p);
-      if (p) {
-        return Array.from((p as unknown as RAM).memory.map((address, value) => ({ address, value })));
-      } else return [];
+      return Array.from(
+        p.memory.map((address, value) => ({ address, value: (value & 0xffff).toString(2).padStart(16, "0"), asm: disassemble(value & 0xffff) }))
+      );
     } else return [];
   }, [part]);
 

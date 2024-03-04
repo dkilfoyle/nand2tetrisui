@@ -2,7 +2,7 @@ import { Span } from "../parserUtils";
 
 export interface IAstTst {
   commands: IAstTstCommand[];
-  outputFormats: IAstTstOutputFormat;
+  outputFormats: IAstTstOutputFormat[];
 }
 
 export type IAstTstCommand = IAstTstStatement | IAstTstRepeat | IAstTstWhile;
@@ -45,4 +45,8 @@ export interface IAstTstNumberValue {
   span: Span;
 }
 
-export type IAstTstOutputFormat = Record<string, number>;
+export interface IAstTstOutputFormat {
+  pinName: string;
+  radix: number;
+  index: number | undefined;
+}

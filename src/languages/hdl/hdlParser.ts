@@ -1,5 +1,5 @@
 import { EmbeddedActionsParser, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
-import { builtinChips } from "./builtins";
+import { chipInfo } from "./chipInfo";
 import { IAstChip, IAstPart, IAstWire, IAstPinDeclaration, IAstPinParts } from "./hdlInterface";
 import { getTokenSpan, mergeSpans } from "../parserUtils";
 
@@ -56,7 +56,7 @@ const chipsCategory = addToken({ name: "chips", pattern: Lexer.NA });
 //   const chipName =
 // })
 
-builtinChips.forEach((chip) => {
+chipInfo.forEach((chip) => {
   chips[chip.name] = addToken({ name: chip.name, pattern: chip.name, longer_alt: ID, categories: [chipsCategory] });
 });
 allTokens.push(ID);

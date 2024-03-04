@@ -6,10 +6,10 @@ import { compileHdl } from "../../languages/hdl/hdlCompiler";
 import { useAtom, useSetAtom } from "jotai";
 import { activeTabAtom, chipAtom, compiledChipAtom, selectedPartAtom } from "../../store/atoms";
 import { IAstChip } from "../../languages/hdl/hdlInterface";
-import { IBuiltinChip, builtinChips } from "../../languages/hdl/builtins";
+import { IChipInfo, chipInfo } from "../../languages/hdl/chipInfo";
 import { useDebouncedCallback } from "use-debounce";
 
-const buildChipDetail = (chip: IBuiltinChip) => {
+const buildChipDetail = (chip: IChipInfo) => {
   const inputs = chip.inputs.map((input) => `${input.name}[${input.width}]`).join(", ");
   const outputs = chip.outputs.map((output) => `${output.name}[${output.width}]`).join(", ");
   return `${chip.name}(${inputs}${outputs.length > 0 ? ", " : ""}${outputs})`;
@@ -102,7 +102,7 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
         provideHover: (model, position) => {
           const word = model.getWordAtPosition(position);
           if (!word) return;
-          const builtin = builtinChips.find((builtin) => builtin.name == word.word);
+          const builtin = chipInfo.find((builtin) => builtin.name == word.word);
           if (builtin)
             return {
               contents: [{ value: `Builtin: ${builtin.name}` }, { value: buildChipDetail(builtin) }],
@@ -119,7 +119,7 @@ export function HdlEditor({ name, sourceCode }: { name: string; sourceCode: stri
             startColumn: word.startColumn,
             endColumn: word.endColumn,
           };
-          const partSuggestions = Object.values(builtinChips).map((chip) => {
+          const partSuggestions = Object.values(chipInfo).map((chip) => {
             const inputs = chip.inputs.map((input, n) => `${input.name}=$${n + 1}`);
             const outputs = chip.outputs.map((output, n) => `${output.name}=$${inputs.length + n + 1}`);
             return {

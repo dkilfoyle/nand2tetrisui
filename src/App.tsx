@@ -18,6 +18,7 @@ window.g = null;
 window.i = null;
 
 import "dockview/dist/styles/dockview.css";
+import { RomTable } from "./components/tester/RomTable";
 
 const fileTree = (props: IDockviewPanelProps) => {
   props.api.setSize({ width: 175 });
@@ -30,6 +31,7 @@ const components = {
   schematic: () => <Schematic />,
   pinTable: () => <PinTable />,
   ramTable: () => <RamTable />,
+  romTable: () => <RomTable />,
   testTable: () => <TestTable />,
   fileTab: (props: IDockviewPanelProps<{ fileName: string }>) => <FileTab fileName={props.params.fileName} />,
 };
@@ -79,6 +81,13 @@ export default function App() {
       id: " ram",
       component: "ramTable",
       title: "Ram",
+      position: { referencePanel: simPanel },
+      tabComponent: "noclose",
+    });
+    api.addPanel({
+      id: " rom",
+      component: "romTable",
+      title: "Rom",
       position: { referencePanel: simPanel },
       tabComponent: "noclose",
     });
