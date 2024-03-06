@@ -28,17 +28,17 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
 
   const parseAndCompile = useDebouncedCallback(
     useCallback((code: string) => {
-      const { ast, parseErrors } = parseAsm(code);
-      if (parseErrors.length > 0) setErrors(parseErrors);
-      else {
-        setAst(ast);
-        // compileAsm(ast).then(({ chip: newchip, compileErrors }) => {
-        //   setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-        //   if (compileErrors.length == 0 && activeTab == name) {
-        //     setCompiledChip({ chip: newchip, ast });
-        //   }
-        // });
-      }
+      // const { ast, parseErrors } = parseAsm(code);
+      // if (parseErrors.length > 0) setErrors(parseErrors);
+      // else {
+      //   setAst(ast);
+      //   // compileAsm(ast).then(({ chip: newchip, compileErrors }) => {
+      //   //   setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
+      //   //   if (compileErrors.length == 0 && activeTab == name) {
+      //   //     setCompiledChip({ chip: newchip, ast });
+      //   //   }
+      //   // });
+      // }
     }, []),
     500
   );

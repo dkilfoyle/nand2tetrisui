@@ -98,6 +98,7 @@ export function TestTable() {
   const rowData = useMemo(() => {
     if (!tests) return [];
     if (!chip) return [];
+    console.log("testtable", tests.chipName, chip.name);
     if (!autoUpdate) return [];
     if (selectedTest == -1) return [];
     if (tests.chipName !== chip.name) return [];
@@ -204,11 +205,11 @@ export function TestTable() {
               const rom = [...chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
               if (!rom) throw Error("Trying to loadROM but no ROM32K part found");
               if (!testOperation.assignment?.value) throw Error("loadROM missing filename");
-              const path = activeTab.substring(0, activeTab.lastIndexOf("/"));
+              const path = tests.tabName.substring(0, tests.tabName.lastIndexOf("/"));
               const fn = `./${path}/${testOperation.assignment.value}`;
               // console.log("loading ROM32K", fn);
               const source = sourceCodes[fn];
-              if (!source) throw Error("Source code for ROM not found");
+              if (!source) throw Error("Source code for ROM not found: ");
               source
                 .split("\n")
                 .filter((line) => line.trim() != "")
@@ -229,7 +230,7 @@ export function TestTable() {
     setPinsData(getPinsData(selectedPart || chip));
     console.log(rows);
     return rows;
-  }, [tests, chip, autoUpdate, selectedTest, setPinsData, selectedPart, compareRows, activeTab]);
+  }, [tests, chip, autoUpdate, selectedTest, setPinsData, selectedPart, compareRows]);
 
   const colDefs = useMemo<ColDef[]>(() => {
     const getColWidth = (pin: Pin) => {

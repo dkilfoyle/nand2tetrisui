@@ -37,6 +37,7 @@
     "react": "^18.2.0",
     "react-arborist": "^3.4.0",
     "react-dom": "^18.2.0",
+    "react-icons": "^5.0.1",
     "react-resizable-panels": "^2.0.3",
     "rxjs": "^7.8.1",
     "use-debounce": "^10.0.0",

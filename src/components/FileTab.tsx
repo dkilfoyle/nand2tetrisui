@@ -3,11 +3,15 @@ import { TstEditor } from "./editor/TstEditor";
 import { sourceCodes } from "../examples/projects";
 import { ISplitviewPanelProps, Orientation, SplitviewApi, SplitviewReact, SplitviewReadyEvent } from "dockview";
 import { useCallback, useState } from "react";
+import { AsmEditor } from "./editor/AsmEditor";
 
 const components = {
-  Hdl: (props: ISplitviewPanelProps<{ fileName: string; sourceCode: string }>) => (
-    <HdlEditor name={props.params.fileName} sourceCode={sourceCodes["./" + props.params.fileName + ".hdl"]}></HdlEditor>
-  ),
+  Code: (props: ISplitviewPanelProps<{ fileName: string; sourceCode: string }>) => {
+    if (props.params.fileName.endsWith(".hdl"))
+      return <HdlEditor name={props.params.fileName} sourceCode={sourceCodes["./" + props.params.fileName]}></HdlEditor>;
+    if (props.params.fileName.endsWith(".asm"))
+      return <AsmEditor name={props.params.fileName} sourceCode={sourceCodes["./" + props.params.fileName]}></AsmEditor>;
+  },
   Tst: (props: ISplitviewPanelProps<{ fileName: string; sourceCode: string }>) => {
     const [expanded, setExpanded] = useState(true);
     const [savedSize, setSavedSize] = useState<number | undefined>(undefined);
@@ -22,7 +26,7 @@ const components = {
     return (
       <TstEditor
         name={props.params.fileName}
-        sourceCode={sourceCodes["./" + props.params.fileName + ".tst"]}
+        sourceCode={sourceCodes["./" + props.params.fileName.split(".")[0] + ".tst"]}
         expanded={expanded}
         onExpandToggle={onExpandToggle}></TstEditor>
     );
@@ -35,11 +39,11 @@ export function FileTab(props: { fileName: string }) {
   const onReady = (event: SplitviewReadyEvent) => {
     setApi(event.api);
     event.api.addPanel({
-      id: "hdl",
-      component: "Hdl",
+      id: props.fileName,
+      component: "Code",
       params: {
         fileName: props.fileName,
-        sourceCode: sourceCodes["./" + props.fileName + ".hdl"],
+        sourceCode: sourceCodes["./" + props.fileName],
       },
     });
     event.api.addPanel({
@@ -47,7 +51,6 @@ export function FileTab(props: { fileName: string }) {
       component: "Tst",
       params: {
         fileName: props.fileName,
-        sourceCode: sourceCodes["./" + props.fileName + ".tst"],
       },
     });
   };

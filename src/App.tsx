@@ -20,6 +20,7 @@ window.i = null;
 import "dockview/dist/styles/dockview.css";
 import { RomTable } from "./components/tester/RomTable";
 import { ScreenPanel } from "./components/tester/ScreenPanel";
+import { DockviewFileTab } from "./tabs";
 
 const fileTree = (props: IDockviewPanelProps) => {
   props.api.setSize({ width: 175 });
@@ -40,6 +41,7 @@ const components = {
 
 const tabComponents = {
   noclose: (props: IDockviewPanelHeaderProps) => <DockviewDefaultTab hideClose={true} {...props} />,
+  fileTab: (props: IDockviewPanelHeaderProps) => <DockviewFileTab {...props}></DockviewFileTab>,
 };
 
 export default function App() {
@@ -128,6 +130,7 @@ export default function App() {
           position: {
             referenceGroup: filesGroup!,
           },
+          tabComponent: "fileTab",
         });
     });
   }, [api, openFiles]);

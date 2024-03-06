@@ -2,12 +2,14 @@ import { loader } from "@monaco-editor/react";
 import { CmpLanguage } from "./cmp";
 import { HdlLanguage } from "./hdl";
 import { TstLanguage } from "./tst";
+import { AsmLanguage } from "./asm";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 
 const LANGUAGES = {
   hdl: HdlLanguage,
   cmp: CmpLanguage,
   tst: TstLanguage,
+  asm: AsmLanguage,
 };
 
 export const baseConfiguration: monaco.languages.LanguageConfiguration = {

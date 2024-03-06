@@ -1,20 +1,59 @@
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { base } from "./base";
 
-export const CmpLanguage: monaco.languages.IMonarchLanguage = {
+export const AsmLanguage: monaco.languages.IMonarchLanguage = {
+  defaultToken: "invalid",
+
+  keywords: ["JMP", "JGE", "JLE", "JEQ", "JGT", "JLT"],
+
+  // The main tokenizer for our languages
   tokenizer: {
     root: [
+      // Output Formats
+      [/%[BDSX]\d+\.\d+\.\d+/, "keyword"],
+
       // identifiers and keywords
-      [/@[\w_]+/, "identifier"],
-      [/\([\w_]+)/, "identifier"],
-      [
-        /([AMD]+=)?(0|-?1|!?[ADM][-+&|][ADM])(;J(GT|EQ|LT|NE|LE|MP))?/,
-        "identifier",
-      ],
+      [/ROM32K/, "keyword"],
+      [/[a-zA-Z-]+/, { cases: { "@keywords": "identifier", "@default": "identifier" } }],
+
+      // numbers
+      [/%X[0-9a-fA-F]+/, "number.hex"],
+      [/(%D)?\d+/, "number"],
+      [/%B[01]+/, "number"],
+
+      [/@\s*[a-zA-Z_\$][\w\$]*/, "keyword"],
 
       // whitespace
       { include: "@whitespace" },
+
+      [/[{}]/, "@bracket"],
+      [/<>/, "operator"],
+      [/[[\].]/, "operator"],
+
+      // strings
+      [/"([^"\\]|\\.)*$/, "string.invalid"], // non-teminated string
+      [/"/, { token: "string.quote", bracket: "@open", next: "@string" }],
+
+      // delimiter: after number because of .\d floats
+      [/[;:!,]/, "delimiter"],
     ],
-    ...base.tokenizer,
+
+    comment: [
+      [/[^/*]+/, "comment"],
+      [/\/\*/, "comment", "@push"], // nested comment
+      ["\\*/", "comment", "@pop"],
+      [/[/*]/, "comment"],
+    ],
+
+    whitespace: [
+      [/[ \t\r\n]+/, "white"],
+      [/\/\*/, "comment", "@comment"],
+      [/\/\/.*$/, "comment"],
+    ],
+
+    string: [
+      [/[^\\"]+/, "string"],
+      [/"/, { token: "string.quote", bracket: "@close", next: "@pop" }],
+    ],
   },
 };
