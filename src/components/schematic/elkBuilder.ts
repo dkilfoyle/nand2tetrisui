@@ -56,14 +56,14 @@ export const compileElk = (chip: Chip, ast: IAstChip, chipid: string, embedded =
 };
 
 export const compileElkFromSource = async (code: string, chipid: string, embedded = true) => {
-  const compileResult = await compileHdlFromSource(code);
+  const compileResult = await compileHdlFromSource(code); // TODO: Cache
   if (isErr(compileResult)) {
-    console.log(compileResult);
     throw Error("Unable to compile from source");
   }
 
   const { chip, ast } = Ok(compileResult);
-  return new ElkBuilder(chip, ast, chipid, embedded).getELK();
+  const elkBuilder = new ElkBuilder(chip, ast, chipid, embedded);
+  return { elk: await elkBuilder.getELK(), pinMap: elkBuilder.pinMap };
 };
 
 export class ElkBuilder {
@@ -277,7 +277,7 @@ export class ElkBuilder {
     };
   }
 
-  chipToNode(chip: Chip): ELKNode {
+  async chipToNode(chip: Chip): Promise<ELKNode> {
     if (!chip.name) throw Error(`No chip name ${chip}`);
     const hwMeta = {
       cls: null,
@@ -300,18 +300,38 @@ export class ElkBuilder {
         children.push(this.chipPinToNode(outPin, index, "OUTPUT"));
       });
     }
-    // chip parts to nodes
-    [...chip.parts.values()].forEach(async (part, i) => {
-      // if (part.parts.size > 0) {
+
+    const doEmbed = (part: Chip): boolean => {
+      // allow 1 level embedding
       const filename = Object.keys(sourceCodes).find((path) => path.includes(part.name! + ".hdl"));
-      if (!this.embedded && filename) {
-        // allow 1 level embedding
-        if (!filename) throw Error("Unable to find source code for " + part.name);
-        const subelk = await compileElkFromSource(sourceCodes[filename], this.partIds[i], true);
-        children.push(subelk);
-        // children.push(this.partToNode(part, this.partIds[i]));
-      } else children.push(this.partToNode(part, this.partIds[i]));
+      return !this.embedded && filename !== undefined && !filename.includes("Project01");
+    };
+
+    // chip parts to nodes
+    const chipPartsWithId = [...chip.parts.values()].map((part, i) => ({ part, id: this.partIds[i] }));
+
+    chipPartsWithId
+      .filter((p) => !doEmbed(p.part))
+      .forEach((p) => {
+        children.push(this.partToNode(p.part, p.id));
+      });
+
+    const embedPromises = chipPartsWithId
+      .filter((p) => doEmbed(p.part))
+      .map(async (p) => {
+        const filename = Object.keys(sourceCodes).find((path) => path.includes(p.part.name! + ".hdl"));
+        if (!filename) throw Error("Unable to find source code for " + p.part.name);
+        const res = await compileElkFromSource(sourceCodes[filename], p.id, true);
+        return res;
+      });
+
+    await Promise.all(embedPromises).then((subGraphs) => {
+      subGraphs.forEach((sg) => {
+        children.push(sg.elk);
+        this.pinMap = new Map([...this.pinMap, ...sg.pinMap]);
+      });
     });
+
     const res = {
       id: this.chipid,
       hwMeta,
@@ -342,7 +362,7 @@ export class ElkBuilder {
   //   );
   // }
 
-  getELK() {
+  async getELK() {
     // console.log("ELK", this);
 
     this.ast.parts.forEach((part, i) => {
@@ -354,7 +374,7 @@ export class ElkBuilder {
       this.wire([...this.chip.parts.values()][i], partWires);
     });
 
-    const elk = this.chipToNode(this.chip);
+    const elk = await this.chipToNode(this.chip);
 
     const sliceWires: ELKEdge[] = [];
     const newWires: ELKEdge[] = [];
@@ -390,7 +410,8 @@ export class ElkBuilder {
         // Create new wire from wire.source/port to sourcePort:slice_in if does not exist
         // change this wire to use sourcePort:slice[start]
         const sliceNodeId = `${wire.sourcePort}:slice`;
-        const slicePortId = `${sliceNodeId}${getSliceString(wire.hwMeta.from)}]`;
+        const slicePortId = `${sliceNodeId}${getSliceString(wire.hwMeta.from)}`;
+        // if (sliceNodeId == "CPU_PC0_out:slice") debugger;
         this.pinMap.set(slicePortId, this.pinMap.get(wire.sourcePort)!);
         if (!newWires.find((newWire) => newWire.targetPort == `${sliceNodeId}_in`)) {
           const newWire = { ...wire, target: sliceNodeId, targetPort: `${sliceNodeId}_in`, id: (ElkBuilder.edgeCount++).toString() };
@@ -458,7 +479,6 @@ export class ElkBuilder {
       elk.edges = this.wires;
     }
 
-    console.log("elk: ", elk);
     return elk;
   }
 }

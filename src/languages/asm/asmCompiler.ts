@@ -96,7 +96,7 @@ const defaultSymbols = {
   THAT: 4,
 };
 
-export const assemble = (ast: IAstAsm) => {
+export const compileAsm = (ast: IAstAsm) => {
   const instructions: string[] = [];
   const symbols: Record<string, number> = defaultSymbols;
 
@@ -107,7 +107,7 @@ export const assemble = (ast: IAstAsm) => {
     if (instruction.astType == "label") {
       symbols[instruction.label] = pc;
     } else if (instruction.astType == "aInstruction") {
-      if (typeof instruction.value == "string") symbols[instruction.value] = vars++;
+      if (typeof instruction.value == "string" && symbols[instruction.value] == undefined) symbols[instruction.value] = vars++;
       pc++;
     } else if (instruction.astType == "cInstruction") {
       pc++;
@@ -121,7 +121,7 @@ export const assemble = (ast: IAstAsm) => {
   ast.instructions.forEach((instruction) => {
     if (instruction.astType == "aInstruction") {
       if (typeof instruction.value == "string") instructions.push(symbols[instruction.value].toString(2).padStart(16, "0"));
-      instructions.push(instruction.value.toString(2).padStart(16, "0"));
+      else instructions.push(instruction.value.toString(2).padStart(16, "0"));
       pc++;
     } else if (instruction.astType == "cInstruction") {
       // 111 acccccc ddd jjj

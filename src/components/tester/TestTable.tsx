@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AgGridReact } from "@ag-grid-community/react";
 import "@ag-grid-community/styles/ag-grid.css";
@@ -60,12 +60,74 @@ export function TestTable() {
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
 
+  // TODO: move colDefs, rowData and compareRows from individual useMemo into one useEffect with deps [chip, tests]
+  // when chip or tests updates
+  // const compareRows = ....
+  // const colDefs = ....
+  // const rowData = ....
+  // gridRef.current?.api.updateGridOptions({columnDefs, rowData})
+
+  const colDefs = useMemo<ColDef[]>(() => {
+    const getColWidth = (pin: Pin) => {
+      if (tests?.ast.outputFormats.find((of) => of.pinName == pin.name)?.radix == 10) return 55;
+      // if (tests?.outputFormats[pin.name] == 2) return 100;
+      return Math.max(30, pin.width * 7);
+    };
+    const defs = [];
+    if (!chip) return [];
+    if (chip.clocked) defs.push({ field: "time", width: 50 });
+    for (const inPin of chip.ins.entries()) {
+      defs.push({ field: inPin.name, width: getColWidth(inPin) });
+    }
+    for (const outPin of chip.outs.entries()) {
+      defs.push({
+        headerName: outPin.name,
+        children: [
+          {
+            field: outPin.name,
+            headerName: "Out",
+            width: getColWidth(outPin),
+            cellStyle: (params: CellClassParams) => {
+              if (params.data[outPin.name + "_e"]?.startsWith("*")) return { backgroundColor: "lightgrey" };
+              if (params.data[outPin.name] != params.data[outPin.name + "_e"]) return { backgroundColor: "#F56565" };
+              // else return { backgroundColor: "#48BB78" };
+            },
+          },
+          // { field: outPin.name + "_e", headerName: "Exp", width: getColWidth(outPin) },
+        ],
+      });
+    }
+    // add any internal pins or computer parts listed in output-list
+    if (tests?.ast.outputFormats)
+      tests?.ast.outputFormats.forEach((opf) => {
+        if (chip.pins.has(opf.pinName))
+          defs.push({
+            field: opf.pinName,
+            width: opf.radix == 10 ? 55 : Math.max(30, opf.radix * 7),
+          });
+        if (["ARegister", "DRegister", "PC", "RAM16K"].includes(opf.pinName)) {
+          const name = `${opf.pinName}${opf.index !== undefined ? `[${opf.index}]` : ""}`;
+          defs.push({
+            field: name,
+            width: opf.radix == 10 ? 55 : Math.max(30, opf.radix * 7),
+            cellStyle: (params: CellClassParams) => {
+              // if (params.data[outPin.name + "_e"]?.startsWith("*")) return { backgroundColor: "#48BB78" };
+              if (params.data[name] != params.data[name + "_e"]) return { backgroundColor: "#F56565" };
+              // else return { backgroundColor: "#48BB78" };
+            },
+          });
+        }
+      });
+    defs.push({ field: "note", width: 200 });
+    return defs;
+  }, [chip, tests?.ast.outputFormats]);
+
   const compareRows = useMemo(() => {
     if (!chip) return [];
     if (!tests) return [];
     if (Object.keys(tests.ast.outputFormats).length == 0) return [];
     if (tests.chipName != chip.name) return [];
-    const cmp = sourceCodes["./" + tests.tabName + ".cmp"];
+    const cmp = sourceCodes["./" + tests.tabName.split(".")[0] + ".cmp"];
     if (!cmp) return [];
     const cmpLines = cmp
       .split("\n")
@@ -77,19 +139,12 @@ export function TestTable() {
           .map((x) => x.trim())
       );
 
-    // output-list must specify every cmp file column in correct order
-    // can include internal pins after cmp pins
-    const oNames = Object.keys(tests.ast.outputFormats);
-    if (cmpLines[0].some((cname, i) => oNames[i].startsWith(cname) == false)) {
-      console.log("output-list must specify every cmp file column in correct order", oNames, cmpLines[0]);
-      return [];
-    }
-
+    const colNames = cmpLines[0];
     return cmpLines.slice(1).map((vals) => {
       const row: Record<string, string> = {};
-      Object.keys(tests?.ast.outputFormats).forEach((name, i) => {
-        // if (vals[i] == undefined) debugger;
-        row[name] = vals[i];
+      colNames.forEach((colName, i) => {
+        const of = tests?.ast.outputFormats.find((of) => of.pinName.startsWith(colName));
+        if (of) row[of.pinName + (of.index !== undefined ? `[${of.index}]` : "")] = vals[i];
       });
       return row;
     });
@@ -98,7 +153,6 @@ export function TestTable() {
   const rowData = useMemo(() => {
     if (!tests) return [];
     if (!chip) return [];
-    console.log("testtable", tests.chipName, chip.name);
     if (!autoUpdate) return [];
     if (selectedTest == -1) return [];
     if (tests.chipName !== chip.name) return [];
@@ -139,11 +193,15 @@ export function TestTable() {
               chip.eval();
             } else if (testOperation.opName == "output") {
               const row: Record<string, string> = {};
+              const cmpRow = compareRows[rows.length];
               [...chip.ins.entries(), ...chip.outs.entries(), ...chip.pins.entries()].forEach((pin) => {
                 row[pin.name] =
                   tests.ast.outputFormats.find((opf) => opf.pinName == pin.name)?.radix == 2
                     ? pin.busVoltage.toString(2).padStart(pin.width, "0")
                     : toDecimal(pin.busVoltage);
+
+                const of = tests.ast.outputFormats.find((of) => of.pinName == pin.name);
+                if (cmpRow) row[pin.name + "_e"] = cmpRow[pin.name];
               });
 
               // look for outputformat is a part name
@@ -151,38 +209,34 @@ export function TestTable() {
                 if (chip.parts.size == 0) {
                   // builtin computer
                   tests.ast.outputFormats.forEach((opf) => {
-                    if (["ARegister", "DRegister", "PC", "RAM16K"].includes(opf.pinName))
-                      row[`${opf.pinName}${opf.index != undefined ? `[${opf.index}]` : ""}`] =
-                        chip.get(opf.pinName, opf.index)?.busVoltage.toString() || "?";
+                    if (["ARegister", "DRegister", "PC", "RAM16K"].includes(opf.pinName)) {
+                      const pinName = `${opf.pinName}${opf.index != undefined ? `[${opf.index}]` : ""}`;
+                      const pin = chip.get(opf.pinName, opf.index);
+                      row[pinName] = pin ? toDecimal(pin.busVoltage) : "?";
+                      if (cmpRow) row[pinName + "_e"] = cmpRow[pinName];
+                    }
                   });
                 } else {
                   tests.ast.outputFormats.forEach((opf) => {
+                    const pinName = `${opf.pinName}${opf.index != undefined ? `[${opf.index}]` : ""}`;
                     if (opf.pinName == "ARegister" || opf.pinName == "DRegister" || opf.pinName == "PC") {
                       const cpu = getChipPart(chip, "CPU");
                       if (!cpu) throw Error();
-                      row[opf.pinName] = cpu.get(opf.pinName, opf.index)?.busVoltage.toString() || "?";
+                      const pin = cpu.get(opf.pinName, opf.index);
+                      row[opf.pinName] = pin ? toDecimal(pin.busVoltage) : "?";
+                      if (cmpRow) row[pinName + "_e"] = cmpRow[pinName];
                     }
                     if (opf.pinName == "RAM16K") {
                       const memory = getChipPart(chip, "Memory");
                       if (!memory) throw Error();
-                      row[`${opf.pinName}[${opf.index}]`] = memory.get(opf.pinName, opf.index)?.busVoltage.toString() || "?";
+                      const pin = memory.get(opf.pinName, opf.index);
+                      row[`${opf.pinName}[${opf.index}]`] = pin ? toDecimal(pin.busVoltage) : "?";
+                      if (cmpRow) row[pinName + "_e"] = cmpRow[pinName];
                     }
                   });
                 }
               }
 
-              if (compareRows.length > 0) {
-                const cmpRow = compareRows[rows.length];
-                Object.entries(cmpRow).forEach(([key, val]) => {
-                  const pin = chip.outs.get(key) ?? chip.pins.get(key);
-
-                  if (pin && val !== undefined) {
-                    const of = tests.ast.outputFormats.find((of) => of.pinName == key);
-                    if (of) row[key + "_e"] = of.radix == 2 ? val.padStart(pin.width || 16, "0") : val;
-                    else row[key + "_e"] = val;
-                  }
-                });
-              }
               row.index = rows.length.toString();
               if (chip.clocked) row.time = clock.toString();
               row.note = note;
@@ -228,59 +282,16 @@ export function TestTable() {
     processCommands(tests.ast.commands.slice(startCommand, endCommand + 1));
 
     setPinsData(getPinsData(selectedPart || chip));
-    console.log(rows);
     return rows;
   }, [tests, chip, autoUpdate, selectedTest, setPinsData, selectedPart, compareRows]);
 
-  const colDefs = useMemo<ColDef[]>(() => {
-    const getColWidth = (pin: Pin) => {
-      if (tests?.ast.outputFormats.find((of) => of.pinName == pin.name)?.radix == 10) return 55;
-      // if (tests?.outputFormats[pin.name] == 2) return 100;
-      return Math.max(30, pin.width * 7);
-    };
-    const defs = [];
-    if (!chip) return [];
-    if (chip.clocked) defs.push({ field: "time", width: 50 });
-    for (const inPin of chip.ins.entries()) {
-      defs.push({ field: inPin.name, width: getColWidth(inPin) });
-    }
-    for (const outPin of chip.outs.entries()) {
-      defs.push({
-        headerName: outPin.name,
-        children: [
-          {
-            field: outPin.name,
-            headerName: "Out",
-            width: getColWidth(outPin),
-            cellStyle: (params: CellClassParams) => {
-              if (params.data[outPin.name + "_e"]?.startsWith("*")) return { backgroundColor: "#48BB78" };
-              else if (params.data[outPin.name] != params.data[outPin.name + "_e"]) return { backgroundColor: "#F56565" };
-              else return { backgroundColor: "#48BB78" };
-            },
-          },
-          { field: outPin.name + "_e", headerName: "Exp", width: getColWidth(outPin) },
-        ],
-      });
-    }
-    // add any internal pins or computer parts listed in output-list
-    if (tests?.ast.outputFormats)
-      tests?.ast.outputFormats.forEach((opf) => {
-        if (chip.pins.has(opf.pinName))
-          defs.push({
-            field: opf.pinName,
-            width: opf.radix == 10 ? 55 : Math.max(30, opf.radix * 7),
-          });
-        if (["ARegister", "DRegister", "PC", "RAM16K"].includes(opf.pinName)) {
-          defs.push({
-            field: `${opf.pinName}${opf.index !== undefined ? `[${opf.index}]` : ""}`,
-            width: opf.radix == 10 ? 55 : Math.max(30, opf.radix * 7),
-          });
-        }
-      });
-    defs.push({ field: "note", width: 200 });
-    console.log("coldefs", defs);
-    return defs;
-  }, [chip, tests?.ast.outputFormats]);
+  useEffect(() => {
+    console.log("Compare Rows: ", compareRows);
+  }, [compareRows]);
+
+  useEffect(() => {
+    console.log("Row data: ", rowData);
+  }, [rowData]);
 
   // useEffect(() => {
   //   console.log("TestTable useEffect[pinTable]", pinTable);

@@ -12,11 +12,12 @@ export function Schematic() {
   const [selectedTest] = useAtom(selectedTestAtom);
   const [compiledChip] = useAtom(compiledChipAtom);
   const [autoDraw, setAutoDraw] = useState(true);
+  const [elk, setElk] = useState<ELKNode>();
 
-  const elk = useMemo(() => {
-    if (compiledChip && autoDraw) return compileElk(compiledChip.chip, compiledChip.ast, compiledChip.chip.name!);
+  useEffect(() => {
+    if (compiledChip && autoDraw) compileElk(compiledChip.chip, compiledChip.ast, compiledChip.chip.name!).then((elk) => setElk(elk));
     else
-      return {
+      setElk({
         id: "0",
         hwMeta: { maxId: 0, bodyText: "Empty Elk", name: "error", cls: null },
         ports: [],
@@ -26,11 +27,11 @@ export function Schematic() {
           "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
           "org.eclipse.elk.layered.mergeEdges": 1,
         },
-      } as ELKNode;
+      });
   }, [compiledChip, autoDraw]);
 
   useEffect(() => {
-    // console.log("ELK:", elk);
+    console.log("Binding ELK:", elk);
     if (hwSchematic.current)
       hwSchematic.current.bindData(elk).then(
         () => {},

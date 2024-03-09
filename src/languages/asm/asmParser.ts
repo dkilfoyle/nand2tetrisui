@@ -38,7 +38,7 @@ addToken({
   line_breaks: true,
 });
 
-const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9]*/ });
+const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9_]*/ });
 
 const LParen = addToken({ name: "LParen", label: "(", pattern: /\(/ });
 const RParen = addToken({ name: "RParen", label: ")", pattern: /\)/ });
@@ -50,9 +50,9 @@ const And = addToken({ name: "And", pattern: /&/ });
 const Or = addToken({ name: "Or", pattern: /\|/ });
 const Not = addToken({ name: "Not", pattern: /!/ });
 const At = addToken({ name: "At", pattern: /@/ });
-const Zero = addToken({ name: "INT", pattern: /0/ });
-const One = addToken({ name: "INT", pattern: /1/ });
-const OtherDigit = addToken({ name: "INT", pattern: /[2-9]/ });
+const Zero = addToken({ name: "Zero", pattern: /0/ });
+const One = addToken({ name: "One", pattern: /1/ });
+const OtherDigit = addToken({ name: "OtherDigit", pattern: /[2-9]/ });
 
 const keywords: Record<string, TokenType> = {};
 const keywordsCategory = addToken({ name: "keywords", pattern: Lexer.NA });
@@ -61,7 +61,7 @@ const keywordsCategory = addToken({ name: "keywords", pattern: Lexer.NA });
 //   const chipName =
 // })
 
-["ADM", "AD", "AM", "A", "D", "M", "JGT", "JEQ", "JGE", "JLT", "JNE", "JLE", "JMP"].forEach((kw) => {
+["ADM", "AMD", "AD", "AM", "DM", "MD", "A", "D", "M", "JGT", "JEQ", "JGE", "JLT", "JNE", "JLE", "JMP"].forEach((kw) => {
   keywords[kw] = addToken({ name: kw, pattern: kw, longer_alt: ID, categories: [keywordsCategory] });
 });
 allTokens.push(ID);
@@ -84,29 +84,29 @@ class AsmParser extends EmbeddedActionsParser {
       { ALT: () => this.SUBRULE(this.label) },
       { ALT: () => this.SUBRULE(this.aInstruction) },
       { ALT: () => this.SUBRULE(this.cInstruction) },
-    ]) as IAstAsmInstruction;
+    ]);
   });
 
   label = this.RULE("label", () => {
     this.CONSUME(LParen);
     const idToken = this.CONSUME(ID);
     this.CONSUME(RParen);
-    return { label: idToken.image, span: getTokenSpan(idToken) } as IAstAsmLabel;
+    return { astType: "label", label: idToken.image, span: getTokenSpan(idToken) } as IAstAsmLabel;
   });
 
   aInstruction = this.RULE("aInstruction", () => {
     this.CONSUME(At);
     const value = this.OR([{ ALT: () => this.SUBRULE(this.int) }, { ALT: () => this.CONSUME(ID) }]);
-    this.CONSUME(SemiColon);
-    return { value: parseInt(value.image), span: getTokenSpan(value) } as IAstAsmAInstruction;
+    return { value: typeof value == "number" ? value : value.image, span: getTokenSpan(value), astType: "aInstruction" } as IAstAsmAInstruction;
   });
 
   cInstruction = this.RULE("cInstruction", () => {
     // dest? = comp ; jmp?
     const dest = this.OPTION(() => this.SUBRULE(this.dest));
     const comp = this.SUBRULE(this.comp);
-    const jmp = this.OPTION(() => this.SUBRULE(this.jmp));
+    const jmp = this.OPTION2(() => this.SUBRULE(this.jmp));
     return {
+      astType: "cInstruction",
       dest,
       comp,
       jmp,
@@ -129,7 +129,7 @@ class AsmParser extends EmbeddedActionsParser {
     digits += first.image;
     let last;
     this.MANY(() => {
-      last = this.OR([{ ALT: () => this.CONSUME(Zero) }, { ALT: () => this.CONSUME(One) }, { ALT: () => this.CONSUME(OtherDigit) }]);
+      last = this.OR2([{ ALT: () => this.CONSUME(Zero) }, { ALT: () => this.CONSUME2(One) }, { ALT: () => this.CONSUME2(OtherDigit) }]);
       digits += last.image;
     });
     return { value: parseInt(digits), span: getTokenSpan(first, last) };
@@ -151,17 +151,17 @@ class AsmParser extends EmbeddedActionsParser {
   comp = this.RULE("comp", () => {
     const unary = this.OPTION(() => this.OR([{ ALT: () => this.CONSUME(Minus) }, { ALT: () => this.CONSUME(Not) }]));
     const lhs = this.SUBRULE(this.term);
-    const rhs = this.OPTION(() => {
-      const op = this.OR([
+    const rhs = this.OPTION2(() => {
+      const op = this.OR2([
         { ALT: () => this.CONSUME(Plus) },
-        { ALT: () => this.CONSUME(Minus) },
+        { ALT: () => this.CONSUME2(Minus) },
         { ALT: () => this.CONSUME(And) },
         { ALT: () => this.CONSUME(Or) },
       ]);
       const term = this.SUBRULE(this.nonZeroTerm);
       return { value: op.image + term.value, span: mergeSpans(getTokenSpan(op), term.span) };
     });
-    return { value: unary?.image + lhs.value + rhs?.value, span: mergeSpans(lhs.span, rhs?.span) } as IAstAsmComp;
+    return { value: (unary?.image || "") + lhs.value + (rhs ? rhs.value : ""), span: mergeSpans(lhs.span, rhs?.span) } as IAstAsmComp;
   });
 
   term = this.RULE("term", () => {
@@ -169,8 +169,8 @@ class AsmParser extends EmbeddedActionsParser {
       { ALT: () => this.CONSUME(keywords.A) },
       { ALT: () => this.CONSUME(keywords.D) },
       { ALT: () => this.CONSUME(keywords.M) },
-      { ALT: () => this.CONSUME(keywords.Zero) },
-      { ALT: () => this.CONSUME(keywords.One) },
+      { ALT: () => this.CONSUME(Zero) },
+      { ALT: () => this.CONSUME(One) },
     ]);
     return { value: term.image, span: getTokenSpan(term) };
   });
@@ -180,7 +180,7 @@ class AsmParser extends EmbeddedActionsParser {
       { ALT: () => this.CONSUME(keywords.A) },
       { ALT: () => this.CONSUME(keywords.D) },
       { ALT: () => this.CONSUME(keywords.M) },
-      { ALT: () => this.CONSUME(keywords.One) },
+      { ALT: () => this.CONSUME(One) },
     ]);
     return { value: term.image, span: getTokenSpan(term) };
   });

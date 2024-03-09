@@ -5,7 +5,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { selectedPartAtom } from "../../store/atoms";
 import { ColDef } from "@ag-grid-community/core";
 import { RAM } from "@nand2tetris/web-ide/simulator/src/chip/builtins/sequential/ram.tsx";
-import { disassemble } from "../../languages/asm/disassembler";
+import { disassemble } from "../../languages/asm/asmCompiler";
 
 interface IRomRow {
   address: number;

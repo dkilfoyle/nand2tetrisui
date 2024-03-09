@@ -6,6 +6,7 @@ import { activeTabAtom } from "../../store/atoms";
 import { parseAsm } from "../../languages/asm/asmParser";
 import { useDebouncedCallback } from "use-debounce";
 import { IAstAsm } from "../../languages/asm/asmInterface";
+import { compileAsm } from "../../languages/asm/asmCompiler";
 
 export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
@@ -28,17 +29,15 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
 
   const parseAndCompile = useDebouncedCallback(
     useCallback((code: string) => {
-      // const { ast, parseErrors } = parseAsm(code);
-      // if (parseErrors.length > 0) setErrors(parseErrors);
-      // else {
-      //   setAst(ast);
-      //   // compileAsm(ast).then(({ chip: newchip, compileErrors }) => {
-      //   //   setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-      //   //   if (compileErrors.length == 0 && activeTab == name) {
-      //   //     setCompiledChip({ chip: newchip, ast });
-      //   //   }
-      //   // });
-      // }
+      const { ast, parseErrors } = parseAsm(code);
+      console.log(ast, parseErrors);
+      if (parseErrors.length > 0) setErrors(parseErrors);
+      else {
+        setAst(ast);
+        const { instructions, symbols } = compileAsm(ast);
+        console.log(instructions, symbols);
+        instructions.forEach((i) => console.log(i));
+      }
     }, []),
     500
   );

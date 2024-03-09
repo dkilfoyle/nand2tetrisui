@@ -54,6 +54,7 @@ export function TstEditor({
           if (checkErrors.length == 0 && activeTab == name) {
             // console.log("TstEditor setTests:", ast);
             setTests({ ast, tabName: activeTab, chipName: chip.name! });
+            console.log("Output formats", ast.outputFormats);
           }
         }
       }
