@@ -2,21 +2,32 @@ import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
-import { activeTabAtom } from "../../store/atoms";
+import { activeTabAtom, compiledAsmAtom, compiledChipAtom, selectedPartAtom } from "../../store/atoms";
 import { parseAsm } from "../../languages/asm/asmParser";
 import { useDebouncedCallback } from "use-debounce";
 import { IAstAsm } from "../../languages/asm/asmInterface";
 import { compileAsm } from "../../languages/asm/asmCompiler";
+import { compileHdl } from "../../languages/hdl/hdlCompiler";
+import { parseHdl } from "../../languages/hdl/hdlParser";
+import { sourceCodes } from "../../examples/projects";
+import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
+
+const computerAST = parseHdl(sourceCodes["./Project05/Computer.hdl"]);
+const computer = await compileHdl(computerAST.ast);
+const rom = [...computer.chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
 
 export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
+  const setCompiledChip = useSetAtom(compiledChipAtom);
+  const setSelectedPart = useSetAtom(selectedPartAtom);
+  const setCompiledAsm = useSetAtom(compiledAsmAtom);
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
-  const cursorEvent = useRef<monacoT.IDisposable>();
+  // const cursorEvent = useRef<monacoT.IDisposable>();
 
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
 
   const [activeTab] = useAtom(activeTabAtom);
-  const [ast, setAst] = useState<IAstAsm>();
+  // const [ast, setAst] = useState<IAstAsm>();
 
   // Add error markers on parse failure
   useEffect(() => {
@@ -28,17 +39,22 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
   }, [errors, editor, monaco, activeTab, name]);
 
   const parseAndCompile = useDebouncedCallback(
-    useCallback((code: string) => {
-      const { ast, parseErrors } = parseAsm(code);
-      console.log(ast, parseErrors);
-      if (parseErrors.length > 0) setErrors(parseErrors);
-      else {
-        setAst(ast);
-        const { instructions, symbols } = compileAsm(ast);
-        console.log(instructions, symbols);
-        instructions.forEach((i) => console.log(i));
-      }
-    }, []),
+    useCallback(
+      (code: string) => {
+        const { ast, parseErrors } = parseAsm(code);
+        console.log(ast, parseErrors);
+        if (parseErrors.length > 0) setErrors(parseErrors);
+        else {
+          // setAst(ast);
+          const { instructions, symbols } = compileAsm(ast);
+          setCompiledAsm(instructions);
+          console.log(instructions, symbols);
+          setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
+          setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
+        }
+      },
+      [setCompiledAsm, setCompiledChip, setSelectedPart]
+    ),
     500
   );
 

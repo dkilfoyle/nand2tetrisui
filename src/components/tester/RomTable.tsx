@@ -2,10 +2,11 @@ import { AgGridReact } from "@ag-grid-community/react";
 import { Box } from "@chakra-ui/react";
 import { useAtom } from "jotai";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { selectedPartAtom } from "../../store/atoms";
+import { chipAtom, selectedPartAtom } from "../../store/atoms";
 import { ColDef } from "@ag-grid-community/core";
 import { RAM } from "@nand2tetris/web-ide/simulator/src/chip/builtins/sequential/ram.tsx";
 import { disassemble } from "../../languages/asm/asmCompiler";
+import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
 
 interface IRomRow {
   address: number;
@@ -15,6 +16,7 @@ interface IRomRow {
 
 export function RomTable() {
   const [part] = useAtom(selectedPartAtom);
+  const [chip] = useAtom(chipAtom);
   const gridRef = useRef<AgGridReact<IRomRow>>(null);
 
   const [colDefs] = useState<ColDef[]>([
@@ -29,8 +31,19 @@ export function RomTable() {
       return Array.from(
         p.memory.map((address, value) => ({ address, value: (value & 0xffff).toString(2).padStart(16, "0"), asm: disassemble(value & 0xffff) }))
       );
+    } else if (chip && chip.name == "Computer") {
+      const rom = [...chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
+      if (rom)
+        return Array.from(
+          rom.memory.map((address, value) => ({
+            address,
+            value: (value & 0xffff).toString(2).padStart(16, "0"),
+            asm: disassemble(value & 0xffff),
+          }))
+        );
+      else return [];
     } else return [];
-  }, [part]);
+  }, [part, chip]);
 
   const onSelectionChanged = useCallback(() => {
     // const selectedRows = gridRef.current!.api.getSelectedRows();

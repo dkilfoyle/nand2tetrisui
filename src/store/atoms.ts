@@ -4,7 +4,7 @@ import { ELKNode } from "../components/schematic/elkBuilder";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip } from "../languages/hdl/hdlInterface";
 
-export const defaultFile = "Project05/CPU.hdl";
+export const defaultFile = "Project06/Max.asm";
 
 export const compiledChipAtom = atom<{ chip: Chip; ast: IAstChip } | undefined>(undefined);
 compiledChipAtom.debugLabel = "compiledChip";
@@ -12,7 +12,19 @@ compiledChipAtom.debugLabel = "compiledChip";
 export const chipAtom = atom((get) => get(compiledChipAtom)?.chip);
 chipAtom.debugLabel = "chip";
 
-export const testsAtom = atom<{ ast: IAstTst; tabName: string; chipName: string } | null>(null);
+export const compiledAsmAtom = atom<string[] | null>(null);
+compiledAsmAtom.debugLabel = "compiledAsm";
+
+export const testFinishedTimeAtom = atom<number>(0);
+testFinishedTimeAtom.debugLabel = "testFinishedTime";
+
+export interface ITests {
+  ast: IAstTst;
+  tabName: string;
+  chipName: string;
+}
+
+export const testsAtom = atom<ITests | null>(null);
 testsAtom.debugLabel = "tests";
 
 export const testBreakpointAtom = atom(-1);
