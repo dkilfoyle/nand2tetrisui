@@ -15,6 +15,9 @@ chipAtom.debugLabel = "chip";
 export const compiledAsmAtom = atom<string[] | null>(null);
 compiledAsmAtom.debugLabel = "compiledAsm";
 
+export const symbolsAtom = atom<Record<string, number> | null>(null);
+symbolsAtom.debugLabel = "symbols";
+
 export const testFinishedTimeAtom = atom<number>(0);
 testFinishedTimeAtom.debugLabel = "testFinishedTime";
 

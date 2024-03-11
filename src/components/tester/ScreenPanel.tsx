@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { chipAtom } from "../../store/atoms";
+import { chipAtom, testFinishedTimeAtom } from "../../store/atoms";
 import { useEffect, useState } from "react";
 import { Screen, ScreenMemory } from "@nand2tetris/web-ide/components/src/chips/screen";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
@@ -26,6 +26,7 @@ class ComputerScreen implements ScreenMemory {
 export function ScreenPanel() {
   const [chip] = useAtom(chipAtom);
   const [memory, setMemory] = useState<ScreenMemory>();
+  const [testFinishedTime] = useAtom(testFinishedTimeAtom);
 
   useEffect(() => {
     if (chip && chip.name) {
@@ -48,6 +49,6 @@ export function ScreenPanel() {
         }
       }
     }
-  }, [chip]);
+  }, [chip, testFinishedTime]);
   return memory !== undefined ? <Screen memory={memory} /> : <div />;
 }

@@ -2,7 +2,7 @@ import { AgGridReact } from "@ag-grid-community/react";
 import { Box } from "@chakra-ui/react";
 import { useAtom } from "jotai";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { selectedPartAtom, testFinishedTimeAtom } from "../../store/atoms";
+import { selectedPartAtom, symbolsAtom, testFinishedTimeAtom } from "../../store/atoms";
 import { ColDef } from "@ag-grid-community/core";
 import { RAM } from "@nand2tetris/web-ide/simulator/src/chip/builtins/sequential/ram.tsx";
 import { FormatHeader } from "./FormatHeader";
@@ -16,6 +16,7 @@ interface IRamRow {
 export function RamTable() {
   const [part] = useAtom(selectedPartAtom);
   const [testFinishedTime] = useAtom(testFinishedTimeAtom);
+  const [symbols] = useAtom(symbolsAtom);
   const gridRef = useRef<AgGridReact<IRamRow>>(null);
 
   const defaultColDef = useMemo<ColDef>(() => {
@@ -29,20 +30,26 @@ export function RamTable() {
   const [colDefs] = useState<ColDef[]>([
     { field: "address", width: 100, headerComponentParams: { format: "D" }, valueFormatter: NumberFormatter },
     { field: "value", width: 100, headerComponentParams: { format: "D" }, valueFormatter: NumberFormatter },
+    { field: "symbol", width: 150 },
   ]);
 
   const rowData = useMemo<IRamRow[]>(() => {
     console.log("updating RAM table @ time ", testFinishedTime);
+    const getSymbolForAddress = (a: number) => {
+      if (!symbols) return "";
+      const x = Object.entries(symbols).find(([key, value]) => value == a);
+      return x ? x[0] : "";
+    };
     if (part && Object.prototype.hasOwnProperty.call(part, "_memory")) {
       const p = part as unknown as RAM;
       return Array.from(p.memory.map((address, value) => ({ address, value })));
     } else if (part && part.name == "Memory") {
       const p = [...part.parts.values()][2];
       if (p) {
-        return Array.from((p as unknown as RAM).memory.map((address, value) => ({ address, value })));
+        return Array.from((p as unknown as RAM).memory.map((address, value) => ({ address, value, symbol: getSymbolForAddress(address) })));
       } else return [];
     } else return [];
-  }, [part, testFinishedTime]);
+  }, [part, symbols, testFinishedTime]);
 
   const onSelectionChanged = useCallback(() => {
     // const selectedRows = gridRef.current!.api.getSelectedRows();

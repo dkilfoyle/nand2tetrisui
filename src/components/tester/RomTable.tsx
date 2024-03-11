@@ -2,11 +2,12 @@ import { AgGridReact } from "@ag-grid-community/react";
 import { Box } from "@chakra-ui/react";
 import { useAtom } from "jotai";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { chipAtom, selectedPartAtom } from "../../store/atoms";
+import { chipAtom, selectedPartAtom, testFinishedTimeAtom } from "../../store/atoms";
 import { ColDef } from "@ag-grid-community/core";
 import { RAM } from "@nand2tetris/web-ide/simulator/src/chip/builtins/sequential/ram.tsx";
 import { disassemble } from "../../languages/asm/asmCompiler";
 import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
+import { NumberFormatter } from "./Formatter";
 
 interface IRomRow {
   address: number;
@@ -18,14 +19,16 @@ export function RomTable() {
   const [part] = useAtom(selectedPartAtom);
   const [chip] = useAtom(chipAtom);
   const gridRef = useRef<AgGridReact<IRomRow>>(null);
+  const [testFinishedTime] = useAtom(testFinishedTimeAtom);
 
   const [colDefs] = useState<ColDef[]>([
-    { field: "address", width: 100 },
-    { field: "value", width: 100 },
+    { field: "address", width: 100, headerComponentParams: { format: "D" }, valueFormatter: NumberFormatter },
+    { field: "value", width: 100, headerComponentParams: { format: "B" }, valueFormatter: NumberFormatter },
     { field: "asm", width: 200 },
   ]);
 
   const rowData = useMemo<IRomRow[]>(() => {
+    console.log("updating ROM table @ time ", testFinishedTime);
     if (part && Object.prototype.hasOwnProperty.call(part, "_memory")) {
       const p = part as unknown as RAM;
       return Array.from(
@@ -43,7 +46,7 @@ export function RomTable() {
         );
       else return [];
     } else return [];
-  }, [part, chip]);
+  }, [part, chip, testFinishedTime]);
 
   const onSelectionChanged = useCallback(() => {
     // const selectedRows = gridRef.current!.api.getSelectedRows();

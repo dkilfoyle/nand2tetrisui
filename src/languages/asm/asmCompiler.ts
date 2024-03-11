@@ -44,11 +44,28 @@ const compAssembleLookup = Object.entries(compDisassembleLookup).reduce<Record<s
   return wip;
 }, {});
 
-const destDisassembleLookup = ["null", "M", "D", "DM", "A", "AM", "AD", "ADM"];
-const destAssembleLookup = destDisassembleLookup.reduce<Record<string, string>>((wip, dest, i) => {
-  wip[dest] = i.toString(2).padStart(3, "0");
-  return wip;
-}, {});
+const destDisassembleLookup: Record<string, string> = {
+  "000": "null",
+  "001": "M",
+  "010": "D",
+  "011": "MD",
+  "100": "A",
+  "101": "AM",
+  "110": "AD",
+  "111": "AMD",
+};
+const destAssembleLookup: Record<string, string> = {
+  null: "000",
+  M: "001",
+  D: "010",
+  MD: "011",
+  DM: "011",
+  A: "100",
+  AM: "101",
+  AD: "110",
+  AMD: "111",
+  ADM: "111",
+};
 
 const jmpDisassembleLookup = ["null", "JGT", "JEQ", "JGE", "JLT", "JNE", "JLE", "JMP"];
 const jmpAssembleLookup = jmpDisassembleLookup.reduce<Record<string, string>>((wip, jmp, i) => {
@@ -62,7 +79,7 @@ export const disassemble = (instruction: string | number) => {
   const [x1, x2, x3, a, c1, c2, c3, c4, c5, c6, d1, d2, d3, j1, j2, j3] = instruction;
   if (!(x1 == "1" && x2 == "1" && x3 == "1")) throw Error(`Can't disassemble invalid instruction ${instruction}`);
   const comp = compDisassembleLookup[a + c1 + c2 + c3 + c4 + c5 + c6];
-  const dest = destDisassembleLookup[parseInt(d1 + d2 + d3, 2)];
+  const dest = destDisassembleLookup[d1 + d2 + d3];
   const jmp = jmpDisassembleLookup[parseInt(j1 + j2 + j3, 2)];
 
   let asm = dest == "null" ? `${comp}` : `${dest} = ${comp}`;

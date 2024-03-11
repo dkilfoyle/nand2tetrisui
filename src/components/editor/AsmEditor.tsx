@@ -2,24 +2,24 @@ import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
-import { activeTabAtom, compiledAsmAtom, compiledChipAtom, selectedPartAtom } from "../../store/atoms";
+import { activeTabAtom, compiledAsmAtom, compiledChipAtom, selectedPartAtom, symbolsAtom } from "../../store/atoms";
 import { parseAsm } from "../../languages/asm/asmParser";
 import { useDebouncedCallback } from "use-debounce";
-import { IAstAsm } from "../../languages/asm/asmInterface";
 import { compileAsm } from "../../languages/asm/asmCompiler";
 import { compileHdl } from "../../languages/hdl/hdlCompiler";
 import { parseHdl } from "../../languages/hdl/hdlParser";
 import { sourceCodes } from "../../examples/projects";
-import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
+// import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
 
 const computerAST = parseHdl(sourceCodes["./Project05/Computer.hdl"]);
 const computer = await compileHdl(computerAST.ast);
-const rom = [...computer.chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
+// const rom = [...computer.chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
 
 export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const setCompiledChip = useSetAtom(compiledChipAtom);
   const setSelectedPart = useSetAtom(selectedPartAtom);
   const setCompiledAsm = useSetAtom(compiledAsmAtom);
+  const setSymbols = useSetAtom(symbolsAtom);
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
   // const cursorEvent = useRef<monacoT.IDisposable>();
@@ -48,6 +48,7 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
           // setAst(ast);
           const { instructions, symbols } = compileAsm(ast);
           setCompiledAsm(instructions);
+          setSymbols(symbols);
           console.log(instructions, symbols);
           setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
           setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
