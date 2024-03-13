@@ -4,13 +4,16 @@ import { sourceCodes } from "../examples/projects";
 import { ISplitviewPanelProps, Orientation, SplitviewApi, SplitviewReact, SplitviewReadyEvent } from "dockview";
 import { useCallback, useState } from "react";
 import { AsmEditor } from "./editor/AsmEditor";
+import { VmEditor } from "./editor/VmEditor";
 
 const components = {
   Code: (props: ISplitviewPanelProps<{ fileName: string; sourceCode: string }>) => {
     if (props.params.fileName.endsWith(".hdl"))
       return <HdlEditor name={props.params.fileName} sourceCode={sourceCodes["./" + props.params.fileName]}></HdlEditor>;
-    if (props.params.fileName.endsWith(".asm"))
+    else if (props.params.fileName.endsWith(".asm"))
       return <AsmEditor name={props.params.fileName} sourceCode={sourceCodes["./" + props.params.fileName]}></AsmEditor>;
+    else if (props.params.fileName.endsWith(".vm"))
+      return <VmEditor name={props.params.fileName} sourceCode={sourceCodes["./" + props.params.fileName]}></VmEditor>;
   },
   Tst: (props: ISplitviewPanelProps<{ fileName: string; sourceCode: string }>) => {
     const [expanded, setExpanded] = useState(true);

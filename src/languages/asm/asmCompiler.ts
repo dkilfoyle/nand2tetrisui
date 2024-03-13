@@ -1,3 +1,4 @@
+import { SymbolTable } from "./SymbolTable";
 import { IAstAsm } from "./asmInterface";
 
 const compDisassembleLookup: Record<string, string> = {
@@ -87,58 +88,34 @@ export const disassemble = (instruction: string | number) => {
   return asm;
 };
 
-const defaultSymbols = {
-  R0: 0,
-  R1: 1,
-  R2: 2,
-  R3: 3,
-  R4: 4,
-  R5: 5,
-  R6: 6,
-  R7: 7,
-  R8: 8,
-  R9: 9,
-  R10: 10,
-  R11: 11,
-  R12: 12,
-  R13: 13,
-  R14: 13,
-  R15: 15,
-  Screen: 16384,
-  KBD: 24576,
-  SP: 0,
-  LCL: 1,
-  ARG: 2,
-  THIS: 3,
-  THAT: 4,
-};
-
 export const compileAsm = (ast: IAstAsm) => {
   const instructions: string[] = [];
-  const symbols: Record<string, number> = defaultSymbols;
 
   // first pass: build symbol table for labels and vars
   let pc = 0;
-  let vars = 16;
+  const symbolTable = new SymbolTable();
   ast.instructions.forEach((instruction) => {
     if (instruction.astType == "label") {
-      symbols[instruction.label] = pc;
+      symbolTable.addLabel(instruction.label, pc);
     } else if (instruction.astType == "aInstruction") {
-      if (typeof instruction.value == "string" && symbols[instruction.value] == undefined) symbols[instruction.value] = vars++;
+      if (typeof instruction.value == "string") symbolTable.addSymbol(instruction.value);
       pc++;
     } else if (instruction.astType == "cInstruction") {
       pc++;
     }
   });
-
-  console.log("Symbol table:", symbols);
+  symbolTable.finishFirstPass();
 
   // second pass: build instructions
   pc = 0;
   ast.instructions.forEach((instruction) => {
     if (instruction.astType == "aInstruction") {
-      if (typeof instruction.value == "string") instructions.push(symbols[instruction.value].toString(2).padStart(16, "0"));
-      else instructions.push(instruction.value.toString(2).padStart(16, "0"));
+      if (typeof instruction.value == "string") {
+        const symbol = symbolTable.get(instruction.value);
+        if (!symbol) throw Error(`${instruction.value} missing in symbol table`);
+        if (!symbol.value) throw Error(`${instruction.value} value missing in symbol table`);
+        instructions.push(symbol.value.toString(2).padStart(16, "0"));
+      } else instructions.push(instruction.value.toString(2).padStart(16, "0"));
       pc++;
     } else if (instruction.astType == "cInstruction") {
       // 111 acccccc ddd jjj
@@ -151,5 +128,5 @@ export const compileAsm = (ast: IAstAsm) => {
     }
   });
 
-  return { instructions, symbols };
+  return { instructions, symbolTable };
 };

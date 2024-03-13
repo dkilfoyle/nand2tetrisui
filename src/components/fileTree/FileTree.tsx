@@ -1,5 +1,4 @@
 import { useAtom, useSetAtom } from "jotai";
-import useResizeObserver from "use-resize-observer";
 import { activeTabAtom, openFilesAtom } from "../../store/atoms";
 import { useCallback } from "react";
 import { projects } from "../../examples/projects";
@@ -51,14 +50,26 @@ export const HdlIcon = () => (
   </Icon>
 );
 
+export const VmIcon = () => (
+  <Icon viewBox="0 0 512 512">
+    <g style={{ transform: "translate(20%, 10%) scale(50%)" }}>
+      <g style={{ stroke: "green", fill: "none", strokeWidth: "40px", strokeLinejoin: "round", strokeLinecap: "round" }}>
+        <path d="M256,25 l256,124 l-256,124, l-256,-124 z" />
+        <path d="M0,247 l256,124 l256,-124" />
+        <path d="M0,355 l256,124 l256,-124" />
+      </g>
+    </g>
+  </Icon>
+);
+
 const getIcon = (props: TreeNodeProps) => {
   if (props.data?.key?.toString().endsWith(".asm")) return AsmIcon();
   else if (props.data?.key?.toString().endsWith("hdl")) return HdlIcon();
+  else if (props.data?.key?.toString().endsWith("vm")) return VmIcon();
   else return <FcFolder />;
 };
 
 export function FileTree() {
-  const { ref, height } = useResizeObserver();
   const [openFiles, setOpenFiles] = useAtom(openFilesAtom);
   const setActiveTab = useSetAtom(activeTabAtom);
 
@@ -73,7 +84,7 @@ export function FileTree() {
   );
 
   return (
-    <div ref={ref} style={{ minHeight: "0", height: "100%", overflow: "auto" }}>
+    <div style={{ minHeight: "0", height: "100%", overflow: "auto" }}>
       <Tree treeData={fileTree} defaultExpandedKeys={["Project05", "Project06"]} showLine onSelect={onSelect} icon={getIcon}></Tree>
     </div>
   );

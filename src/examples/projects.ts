@@ -7,6 +7,7 @@ export const sourceCodes = {
   ...import.meta.glob(["./Project03/*.hdl", "./Project03/*.tst", "./Project03/*.cmp"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project05/*.hdl", "./Project05/*.tst", "./Project05/*.cmp", "./Project05/*.hack"], { as: "raw", eager: true }),
   ...import.meta.glob(["./Project06/*.asm", "./Project06/*.tst", "./Project06/*.cmp"], { as: "raw", eager: true }),
+  ...import.meta.glob(["./Project07/*.vm", "./Project07/*.tst", "./Project07/*.cmp"], { as: "raw", eager: true }),
 };
 
 export const projects = [
@@ -41,6 +42,7 @@ export const projects = [
   },
   { id: "Project05", name: "Project05", children: ["Memory.hdl", "Controller.hdl", "CPU.hdl", "CPUControl.hdl", "Computer.hdl"] },
   { id: "Project06", name: "Project06", children: ["Max.asm", "Add.asm", "Rect.asm"] },
+  { id: "Project07", name: "Project07", children: ["SimpleAdd.vm", "StackTest.vm", "BasicTest.vm", "PointerTest.vm", "StaticTest.vm"] },
 ];
 
 // console.log("Pre-compiling userdefined chips...");

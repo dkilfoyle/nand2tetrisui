@@ -3,19 +3,18 @@ import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
 import { activeTabAtom, compiledAsmAtom, compiledChipAtom, selectedPartAtom, symbolTableAtom } from "../../store/atoms";
-import { parseAsm } from "../../languages/asm/asmParser";
 import { useDebouncedCallback } from "use-debounce";
-import { compileAsm } from "../../languages/asm/asmCompiler";
 import { compileHdl } from "../../languages/hdl/hdlCompiler";
 import { parseHdl } from "../../languages/hdl/hdlParser";
 import { sourceCodes } from "../../examples/projects";
+import { parseVm } from "../../languages/vm/vmParser";
 // import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
 
 const computerAST = parseHdl(sourceCodes["./Project05/Computer.hdl"]);
 const computer = await compileHdl(computerAST.ast);
 // const rom = [...computer.chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
 
-export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
+export function VmEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   const setCompiledChip = useSetAtom(compiledChipAtom);
   const setSelectedPart = useSetAtom(selectedPartAtom);
   const setCompiledAsm = useSetAtom(compiledAsmAtom);
@@ -35,27 +34,24 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
     if (monaco === null) return;
     const model = editor.current.getModel();
     if (model === null) return;
-    monaco.editor.setModelMarkers(model, "asm", errors);
+    monaco.editor.setModelMarkers(model, "vm", errors);
   }, [errors, editor, monaco, activeTab, name]);
 
   const parseAndCompile = useDebouncedCallback(
-    useCallback(
-      (code: string) => {
-        const { ast, parseErrors } = parseAsm(code);
-        console.log(ast, parseErrors);
-        if (parseErrors.length > 0) setErrors(parseErrors);
-        else {
-          // setAst(ast);
-          const { instructions, symbolTable } = compileAsm(ast);
-          setCompiledAsm(instructions);
-          setSymbolTable(symbolTable);
-          console.log(instructions, symbolTable);
-          setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
-          setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
-        }
-      },
-      [setCompiledAsm, setCompiledChip, setSelectedPart, setSymbolTable]
-    ),
+    useCallback((code: string) => {
+      const { ast, parseErrors } = parseVm(code);
+      console.log(ast, parseErrors);
+      if (parseErrors.length > 0) setErrors(parseErrors);
+      else {
+        // setAst(ast);
+        // const { instructions, symbolTable } = compileVm(ast);
+        // setCompiledAsm(instructions);
+        // setSymbolTable(symbolTable);
+        // console.log(instructions, symbolTable);
+        // setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
+        // setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
+      }
+    }, []),
     500
   );
 
@@ -107,7 +103,7 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
             };
         },
       });
-      const completionDisposable = monaco.languages.registerCompletionItemProvider("hdl", {
+      const completionDisposable = monaco.languages.registerCompletionItemProvider("vm", {
         provideCompletionItems: (model, position) => {
           const word = model.getWordUntilPosition(position);
           // const line = model.getLineContent(position.lineNumber);
@@ -145,5 +141,5 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
     [parseAndCompile]
   );
 
-  return <Editor language="asm" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
+  return <Editor language="vm" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
 }

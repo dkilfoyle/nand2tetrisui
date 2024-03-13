@@ -4,12 +4,14 @@ import { HdlLanguage } from "./hdl";
 import { TstLanguage } from "./tst";
 import { AsmLanguage } from "./asm";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
+import { VmLanguage } from "./vm";
 
 const LANGUAGES = {
   hdl: HdlLanguage,
   cmp: CmpLanguage,
   tst: TstLanguage,
   asm: AsmLanguage,
+  vm: VmLanguage,
 };
 
 export const baseConfiguration: monaco.languages.LanguageConfiguration = {

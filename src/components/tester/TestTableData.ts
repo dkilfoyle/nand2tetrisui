@@ -1,6 +1,6 @@
 import { Bus, HIGH, LOW, Pin, Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
-import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
+import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock";
 import { sourceCodes } from "../../examples/projects";
 import { CellClassParams, ColDef } from "@ag-grid-community/core";
 import { IAstTstCommand, IAstTstOutputFormat } from "../../languages/tst/tstInterface";
@@ -81,7 +81,7 @@ export const getColDefs = (chip: Chip | undefined, outputFormats: IAstTstOutputF
           field: opf.pinName,
           width: opf.radix == 10 ? 55 : Math.max(30, opf.radix * 7),
         });
-      if (["ARegister", "DRegister", "PC", "RAM16K"].includes(opf.pinName)) {
+      if (["ARegister", "DRegister", "PC", "RAM16K", "Memory"].includes(opf.pinName)) {
         const name = `${opf.pinName}${opf.index !== undefined ? `[${opf.index}]` : ""}`;
         defs.push({
           field: name,
@@ -210,7 +210,7 @@ export const getRowData = (
                     row[opf.pinName] = pin ? toDecimal(pin.busVoltage) : "?";
                     if (cmpRow) row[pinName + "_e"] = cmpRow[pinName];
                   }
-                  if (opf.pinName == "RAM16K") {
+                  if (["Memory", "RAM16K"].includes(opf.pinName)) {
                     const memory = getChipPart(chip, "Memory");
                     if (!memory) throw Error();
                     const pin = memory.get(opf.pinName, opf.index);
@@ -227,11 +227,13 @@ export const getRowData = (
             rows.push(row);
             outputed = true;
           } else if (testOperation.opName == "tick") {
+            console.log("tcking");
             chip.eval();
             clock.tick();
           } else if (testOperation.opName == "tock") {
             chip.eval();
             clock.tock();
+            clock.frame();
           } else if (testOperation.opName == "expect") {
             const stringExpect = testOperation.assignment!.value;
             rows[rows.length - 1][testOperation.assignment!.id + "_e"] = stringExpect.slice(stringExpect.startsWith("%B") ? 2 : 0);
@@ -264,9 +266,9 @@ export const getRowData = (
         }
       if (testCommand.commandName == "repeat") {
         for (let i = 0; i < testCommand.n; i++) {
-          console.log("Repeat ", i);
           processCommands(testCommand.statements);
         }
+        console.log(`Repeated ${testCommand.n} times`);
       }
     });
   };

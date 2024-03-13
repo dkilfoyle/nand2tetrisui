@@ -3,8 +3,9 @@ import { IAstTst } from "../languages/tst/tstInterface";
 import { ELKNode } from "../components/schematic/elkBuilder";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip } from "../languages/hdl/hdlInterface";
+import { SymbolTable } from "../languages/asm/SymbolTable";
 
-export const defaultFile = "Project06/Max.asm";
+export const defaultFile = "Project07/SimpleAdd.vm";
 
 export const compiledChipAtom = atom<{ chip: Chip; ast: IAstChip } | undefined>(undefined);
 compiledChipAtom.debugLabel = "compiledChip";
@@ -15,8 +16,8 @@ chipAtom.debugLabel = "chip";
 export const compiledAsmAtom = atom<string[] | null>(null);
 compiledAsmAtom.debugLabel = "compiledAsm";
 
-export const symbolsAtom = atom<Record<string, number> | null>(null);
-symbolsAtom.debugLabel = "symbols";
+export const symbolTableAtom = atom<SymbolTable>(new SymbolTable());
+symbolTableAtom.debugLabel = "symbolTable";
 
 export const testFinishedTimeAtom = atom<number>(0);
 testFinishedTimeAtom.debugLabel = "testFinishedTime";

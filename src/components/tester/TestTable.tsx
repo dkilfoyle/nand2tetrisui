@@ -48,6 +48,7 @@ export function TestTable() {
       gridRef.current!.api.updateGridOptions({ rowData, columnDefs: colDefs });
     }
     setTestFinishedTime(Date.now());
+    console.log(colDefs, rowData);
   }, [gridRef, autoUpdate, chip, selectedPart, selectedTest, setPinsData, tests, compiledAsm, setTestFinishedTime]);
 
   const onSelectionChanged = useCallback(() => {
