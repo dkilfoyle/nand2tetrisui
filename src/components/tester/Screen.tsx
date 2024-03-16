@@ -40,7 +40,7 @@ export const Screen = ({ memory, frame }: { memory: ScreenMemory; frame: string 
 
   const draw = useCallback(() => {
     const ctx = canvas.current?.getContext("2d") ?? undefined;
-    console.log("Drawing", frame);
+    // console.log("Drawing", frame);
 
     if (ctx) {
       drawImage(ctx, memory);
@@ -56,11 +56,11 @@ export const Screen = ({ memory, frame }: { memory: ScreenMemory; frame: string 
   );
 
   useClockFrame(() => {
-    console.log("frame");
+    // console.log("frame");
     draw();
   });
   useClockReset(() => {
-    console.log("reset");
+    // console.log("reset");
     // canvas.current?.getContext("2d")?.clearRect(0, 0, canvas.current.width, canvas.current.height);
   });
 

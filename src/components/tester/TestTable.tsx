@@ -13,7 +13,7 @@ import {
   pinsDataAtom,
   getPinsData,
   selectedPartAtom,
-  compiledAsmAtom,
+  compiledHackAtom,
   testFinishedTimeAtom,
 } from "../../store/atoms";
 
@@ -30,7 +30,7 @@ export function TestTable() {
   const [selectedTest] = useAtom(selectedTestAtom);
   const [autoUpdate, setAutoUpdate] = useState(true);
   const [outcome, setOutcome] = useState<ITestsOutcome>({ pass: 0, fail: 0 });
-  const [compiledAsm] = useAtom(compiledAsmAtom);
+  const [compiledHack] = useAtom(compiledHackAtom);
   const setTestFinishedTime = useSetAtom(testFinishedTimeAtom);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
@@ -39,7 +39,7 @@ export function TestTable() {
     if (!gridRef.current) return;
     const compareRows = getCompareRows(chip, tests);
     const colDefs = getColDefs(chip, tests?.ast.outputFormats);
-    const rowData = getRowData(chip, compiledAsm, tests, compareRows, autoUpdate, selectedTest);
+    const rowData = getRowData(chip, compiledHack, tests, compareRows, autoUpdate, selectedTest);
     const outcome = getOutcome(chip, rowData);
     setOutcome(outcome);
     if (selectedPart) setPinsData(getPinsData(selectedPart || chip));
@@ -48,8 +48,8 @@ export function TestTable() {
       gridRef.current!.api.updateGridOptions({ rowData, columnDefs: colDefs });
     }
     setTestFinishedTime(Date.now());
-    console.log(colDefs, rowData);
-  }, [gridRef, autoUpdate, chip, selectedPart, selectedTest, setPinsData, tests, compiledAsm, setTestFinishedTime]);
+    // console.log(colDefs, rowData);
+  }, [gridRef, autoUpdate, chip, selectedPart, selectedTest, setPinsData, tests, compiledHack, setTestFinishedTime]);
 
   const onSelectionChanged = useCallback(() => {
     if (!chip) return;

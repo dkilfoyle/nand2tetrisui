@@ -13,7 +13,10 @@ compiledChipAtom.debugLabel = "compiledChip";
 export const chipAtom = atom((get) => get(compiledChipAtom)?.chip);
 chipAtom.debugLabel = "chip";
 
-export const compiledAsmAtom = atom<string[] | null>(null);
+export const compiledHackAtom = atom<string[] | null>(null);
+compiledHackAtom.debugLabel = "compiledHack";
+
+export const compiledAsmAtom = atom<string | null>(null);
 compiledAsmAtom.debugLabel = "compiledAsm";
 
 export const symbolTableAtom = atom<SymbolTable>(new SymbolTable());

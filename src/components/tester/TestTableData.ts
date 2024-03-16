@@ -129,7 +129,7 @@ export const getCompareRows = (chip: Chip | undefined, tests: ITests | null) => 
 
 export const getRowData = (
   chip: Chip | undefined,
-  compiledAsm: string[] | null,
+  compiledHack: string[] | null,
   tests: ITests | null,
   compareRows: ITest[],
   autoUpdate: boolean,
@@ -227,7 +227,6 @@ export const getRowData = (
             rows.push(row);
             outputed = true;
           } else if (testOperation.opName == "tick") {
-            console.log("tcking");
             chip.eval();
             clock.tick();
           } else if (testOperation.opName == "tock") {
@@ -256,9 +255,9 @@ export const getRowData = (
                 .filter((line) => line.trim() != "")
                 .map((i) => parseInt(i.replaceAll(" ", ""), 2) & 0xffff)
                 .forEach((v, i) => (rom.at(i).busVoltage = v));
-            else if (fn.endsWith(".asm")) {
-              if (compiledAsm)
-                compiledAsm.forEach((instr, i) => {
+            else if (fn.endsWith(".asm") || fn.endsWith(".vm")) {
+              if (compiledHack)
+                compiledHack.forEach((instr, i) => {
                   rom.at(i).busVoltage = parseInt(instr, 2) & 0xffff;
                 });
             }

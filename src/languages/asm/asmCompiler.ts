@@ -113,7 +113,7 @@ export const compileAsm = (ast: IAstAsm) => {
       if (typeof instruction.value == "string") {
         const symbol = symbolTable.get(instruction.value);
         if (!symbol) throw Error(`${instruction.value} missing in symbol table`);
-        if (!symbol.value) throw Error(`${instruction.value} value missing in symbol table`);
+        if (symbol.value == undefined) throw Error(`${instruction.value} value missing in symbol table`);
         instructions.push(symbol.value.toString(2).padStart(16, "0"));
       } else instructions.push(instruction.value.toString(2).padStart(16, "0"));
       pc++;

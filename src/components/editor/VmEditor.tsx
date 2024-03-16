@@ -2,29 +2,17 @@ import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
-import { activeTabAtom, compiledAsmAtom, compiledChipAtom, selectedPartAtom, symbolTableAtom } from "../../store/atoms";
+import { activeTabAtom, compiledAsmAtom } from "../../store/atoms";
 import { useDebouncedCallback } from "use-debounce";
-import { compileHdl } from "../../languages/hdl/hdlCompiler";
-import { parseHdl } from "../../languages/hdl/hdlParser";
-import { sourceCodes } from "../../examples/projects";
 import { parseVm } from "../../languages/vm/vmParser";
-// import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
-
-const computerAST = parseHdl(sourceCodes["./Project05/Computer.hdl"]);
-const computer = await compileHdl(computerAST.ast);
-// const rom = [...computer.chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
+import { compileVm } from "../../languages/vm/vmCompiler";
 
 export function VmEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
-  const setCompiledChip = useSetAtom(compiledChipAtom);
-  const setSelectedPart = useSetAtom(selectedPartAtom);
-  const setCompiledAsm = useSetAtom(compiledAsmAtom);
-  const setSymbolTable = useSetAtom(symbolTableAtom);
+  // const setSymbolTable = useSetAtom(symbolTableAtom);
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
-  // const cursorEvent = useRef<monacoT.IDisposable>();
-
+  const setCompiledAsm = useSetAtom(compiledAsmAtom);
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
-
   const [activeTab] = useAtom(activeTabAtom);
   // const [ast, setAst] = useState<IAstAsm>();
 
@@ -38,20 +26,21 @@ export function VmEditor({ name, sourceCode }: { name: string; sourceCode: strin
   }, [errors, editor, monaco, activeTab, name]);
 
   const parseAndCompile = useDebouncedCallback(
-    useCallback((code: string) => {
-      const { ast, parseErrors } = parseVm(code);
-      console.log(ast, parseErrors);
-      if (parseErrors.length > 0) setErrors(parseErrors);
-      else {
-        // setAst(ast);
-        // const { instructions, symbolTable } = compileVm(ast);
-        // setCompiledAsm(instructions);
-        // setSymbolTable(symbolTable);
-        // console.log(instructions, symbolTable);
-        // setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
-        // setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
-      }
-    }, []),
+    useCallback(
+      (code: string) => {
+        const { ast, parseErrors } = parseVm(code);
+        console.log("VmEditor parse", ast, parseErrors);
+        if (parseErrors.length > 0) setErrors(parseErrors);
+        else {
+          // setAst(ast);
+          const { asm, spans, compileErrors } = compileVm(ast);
+          setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
+          if (compileErrors.length > 0) setCompiledAsm("// Compile Errors");
+          else setCompiledAsm(asm.join("\n") + "\n");
+        }
+      },
+      [setCompiledAsm]
+    ),
     500
   );
 

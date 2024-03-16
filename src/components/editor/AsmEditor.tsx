@@ -2,7 +2,7 @@ import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
-import { activeTabAtom, compiledAsmAtom, compiledChipAtom, selectedPartAtom, symbolTableAtom } from "../../store/atoms";
+import { activeTabAtom, compiledHackAtom, compiledChipAtom, selectedPartAtom, symbolTableAtom, compiledAsmAtom } from "../../store/atoms";
 import { parseAsm } from "../../languages/asm/asmParser";
 import { useDebouncedCallback } from "use-debounce";
 import { compileAsm } from "../../languages/asm/asmCompiler";
@@ -15,11 +15,12 @@ const computerAST = parseHdl(sourceCodes["./Project05/Computer.hdl"]);
 const computer = await compileHdl(computerAST.ast);
 // const rom = [...computer.chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
 
-export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
+export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name: string; sourceCode: string; isCompiledViewer?: boolean }) {
   const setCompiledChip = useSetAtom(compiledChipAtom);
   const setSelectedPart = useSetAtom(selectedPartAtom);
-  const setCompiledAsm = useSetAtom(compiledAsmAtom);
+  const setCompiledHack = useSetAtom(compiledHackAtom);
   const setSymbolTable = useSetAtom(symbolTableAtom);
+  const [compiledAsm] = useAtom(compiledAsmAtom);
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
   // const cursorEvent = useRef<monacoT.IDisposable>();
@@ -38,32 +39,34 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
     monaco.editor.setModelMarkers(model, "asm", errors);
   }, [errors, editor, monaco, activeTab, name]);
 
-  const parseAndCompile = useDebouncedCallback(
-    useCallback(
-      (code: string) => {
-        const { ast, parseErrors } = parseAsm(code);
-        console.log(ast, parseErrors);
-        if (parseErrors.length > 0) setErrors(parseErrors);
-        else {
-          // setAst(ast);
-          const { instructions, symbolTable } = compileAsm(ast);
-          setCompiledAsm(instructions);
-          setSymbolTable(symbolTable);
-          console.log(instructions, symbolTable);
-          setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
-          setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
-        }
-      },
-      [setCompiledAsm, setCompiledChip, setSelectedPart, setSymbolTable]
-    ),
-    500
+  const parseAndCompile = useCallback(
+    (code: string) => {
+      const { ast, parseErrors } = parseAsm(code);
+      console.log(ast, parseErrors);
+      if (parseErrors.length > 0) setErrors(parseErrors);
+      else {
+        // setAst(ast);
+        const { instructions, symbolTable } = compileAsm(ast);
+        setCompiledHack(instructions);
+        setSymbolTable(symbolTable);
+        console.log(instructions, symbolTable);
+        setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
+        setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
+      }
+    },
+    [setCompiledHack, setCompiledChip, setSelectedPart, setSymbolTable]
   );
 
   useEffect(() => {
-    if (editor && editor.current && activeTab == name) {
-      parseAndCompile(editor.current?.getValue());
+    if (editor && editor.current && activeTab == name && !isCompiledViewer) parseAndCompile(editor.current?.getValue());
+  }, [activeTab, editor, isCompiledViewer, name, parseAndCompile]);
+
+  useEffect(() => {
+    if (editor && editor.current && activeTab.split(".")[0] == name.split(".")[0] && isCompiledViewer && compiledAsm) {
+      editor.current.getModel()?.setValue(compiledAsm);
+      parseAndCompile(compiledAsm);
     }
-  }, [activeTab, editor, name, parseAndCompile]);
+  }, [isCompiledViewer, compiledAsm, activeTab, editor, name, parseAndCompile]);
 
   // const onChangeCursorPosition = useCallback(
   //   (e: monacoT.editor.ICursorPositionChangedEvent) => {
@@ -86,7 +89,7 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
     (ed) => {
       editor.current = ed;
       const value = editor.current.getValue();
-      parseAndCompile(value);
+      if (value !== "") parseAndCompile(value);
     },
     [parseAndCompile]
   );
@@ -135,14 +138,15 @@ export function AsmEditor({ name, sourceCode }: { name: string; sourceCode: stri
     }
   }, [monaco]);
 
-  const onValueChange = useCallback(
-    // TODO: Debounce
-    (value: string | undefined) => {
-      // console.log("here is the current model value:", value);
-      if (!value) return;
-      parseAndCompile(value);
-    },
-    [parseAndCompile]
+  const onValueChange = useDebouncedCallback(
+    useCallback(
+      (value: string | undefined) => {
+        if (!value) return;
+        parseAndCompile(value);
+      },
+      [parseAndCompile]
+    ),
+    500
   );
 
   return <Editor language="asm" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
