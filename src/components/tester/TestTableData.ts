@@ -210,7 +210,7 @@ export const getRowData = (
                     row[opf.pinName] = pin ? toDecimal(pin.busVoltage) : "?";
                     if (cmpRow) row[pinName + "_e"] = cmpRow[pinName];
                   }
-                  if (["Memory", "RAM16K"].includes(opf.pinName)) {
+                  if (["Memory", "RAM16K", "RAM"].includes(opf.pinName)) {
                     const memory = getChipPart(chip, "Memory");
                     if (!memory) throw Error();
                     const pin = memory.get(opf.pinName, opf.index);

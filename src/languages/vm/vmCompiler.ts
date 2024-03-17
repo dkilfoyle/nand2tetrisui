@@ -7,7 +7,6 @@ const printVmInstruction = (i: IAstVmInstruction) => {
   } else if (i.astType == "opInstruction") {
     return `${i.op}`;
   }
-  return "No print for " + i.astType;
 };
 
 const validateInstructions = (instructions: IAstVmInstruction[]) => {
@@ -44,147 +43,186 @@ const seg2ptr: Record<string, string> = {
 // commentLevel 3 = per asm instruction comments
 
 export const compileVm = (ast: IAstVm, commentLevel = 3) => {
-  const asm: string[] = [];
-  const spans: Span[] = [];
+  return new VmCompiler(ast, commentLevel).compile();
+};
 
-  const compileErrors = validateInstructions(ast.instructions);
-  if (compileErrors.length > 0) return { asm: [], spans: [], compileErrors };
+class VmCompiler {
+  public asm: string[] = [];
+  public spans: Span[] = [];
+  public compileErrors: CompilationError[] = [];
+  public startLine: number = 0;
 
-  const sComment = (c: string) => {
-    if (commentLevel > 0) asm.push("// " + c);
-  };
-  const iComment = (i: IAstVmInstruction) => {
-    if (commentLevel > 1) asm.push("// " + printVmInstruction(i));
-  };
-  const iiComment = (c: string) => {
-    if (commentLevel > 2) asm.push("// - " + c);
-  };
-  const addSpan = (startLine: number) => {
-    spans.push({
+  constructor(public ast: IAstVm, public commentLevel: number) {}
+
+  pushD() {
+    this.iiComment("push D");
+    this.asm.push("@SP");
+    this.asm.push("A=M");
+    this.asm.push("M=D");
+    this.iiComment("SP++");
+    this.asm.push("@SP");
+    this.asm.push("M=M+1");
+  }
+
+  popM() {
+    this.iiComment("pop M");
+    this.asm.push("@SP");
+    this.asm.push("M=M-1");
+    this.asm.push("@SP");
+    this.asm.push("A=M");
+  }
+
+  popD() {
+    this.iiComment("pop D");
+    this.asm.push("@SP");
+    this.asm.push("M=M-1");
+    this.asm.push("@SP");
+    this.asm.push("A=M");
+    this.asm.push("D=M");
+  }
+
+  compile() {
+    const compileErrors = validateInstructions(this.ast.instructions);
+    if (compileErrors.length > 0) return { asm: [], spans: [], compileErrors };
+    this.sComment("Init SP to 256");
+    this.asm.push("@256");
+    this.asm.push("D=A");
+    this.asm.push("@SP");
+    this.asm.push("M=D");
+
+    this.ast.instructions.forEach((i) => {
+      this.startSpan();
+      this.iComment(i);
+      if (i.astType == "stackInstruction") {
+        if (i.op == "push") {
+          if (i.memorySegment == "constant") {
+            // push constant 7
+            // @7
+            // D=A
+            // @SP
+            // M=D // push D=7 onto stack
+            // M=M+1
+            this.iiComment(`D = ${i.index}`);
+            this.asm.push(`@${i.index}`);
+            this.asm.push("D=A");
+          } else {
+            // push segment i
+            // @segment
+            // D=A
+            // @i
+            // A=D+A
+            // D=M
+            this.iiComment(`D = RAM[${seg2ptr[i.memorySegment]} + ${i.index}]`);
+            this.asm.push(`@${seg2ptr[i.memorySegment]}`);
+            this.asm.push("D=A");
+            this.asm.push(`@${i.index}`);
+            this.asm.push("A=D+A");
+            this.asm.push("D=M");
+          }
+          this.pushD();
+        }
+        if (i.op == "pop") {
+          if (i.memorySegment == "constant") throw Error("Should have been caught by validation");
+          this.iiComment(`addr(R13)=segment+i`);
+          this.asm.push(`@${seg2ptr[i.memorySegment]}`);
+          this.asm.push("D=A");
+          this.asm.push(`@${i.index}`);
+          this.asm.push("D=D+A");
+          this.asm.push("@R13");
+          this.asm.push("M=D");
+          this.iiComment(`SP--`);
+          this.asm.push("@SP");
+          this.asm.push("M=M-1");
+          this.iiComment(`RAM[addr] = RAM[SP]`);
+          this.asm.push("@SP");
+          this.asm.push("D=A");
+          this.asm.push("@R13");
+          this.asm.push("M=D");
+          this.asm.push("A=D");
+        }
+      } else if (i.astType == "opInstruction") {
+        if (["add", "sub", "and", "or", "eq", "gt", "lt"].includes(i.op)) {
+          // binary operation
+          this.popD();
+          this.popM();
+          this.iiComment(`D=D ${i.op} M`);
+          switch (i.op) {
+            case "add":
+              this.asm.push("M=D+M");
+              break;
+            case "sub":
+              this.asm.push("M=D-M");
+              break;
+            case "and":
+              this.asm.push("M=D&M");
+              break;
+            case "or":
+              this.asm.push("M=D|M");
+              break;
+            default:
+              throw Error(`VM operation ${i.op} not implemented in compiler`); // TODO: eq,gt,lt op
+          }
+        } else {
+          // unary operation
+          this.popM();
+          this.iiComment(`D=${i.op} M`);
+          switch (i.op) {
+            case "neg":
+              this.asm.push("D=-M");
+              break;
+            case "not":
+              this.asm.push("D=!M");
+              break;
+            default:
+              throw Error();
+          }
+        }
+      }
+    });
+    return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors };
+  }
+
+  sComment(c: string) {
+    if (this.commentLevel > 0) this.asm.push("// " + c);
+  }
+
+  iComment(i: IAstVmInstruction) {
+    if (this.commentLevel > 1) this.asm.push("// " + printVmInstruction(i));
+  }
+
+  iiComment(c: string) {
+    if (this.commentLevel > 2) this.asm.push("// - " + c);
+  }
+
+  startSpan() {
+    this.startLine = this.asm.length;
+  }
+
+  endSpan() {
+    this.spans.push({
       startOffset: 0,
       endOffset: 0,
       startColumn: 0,
-      endColumn: asm[asm.length - 1].length,
-      startLineNumber: startLine,
-      endLineNumber: asm.length,
+      endColumn: this.asm[this.asm.length - 1].length,
+      startLineNumber: this.startLine,
+      endLineNumber: this.asm.length,
     });
-  };
+  }
 
-  sComment("Init SP to 256");
-  asm.push("@256");
-  asm.push("D=A");
-  asm.push("@SP");
-  asm.push("M=D");
-
-  ast.instructions.forEach((i) => {
-    const startLine = asm.length;
-    iComment(i);
-    if (i.astType == "stackInstruction") {
-      if (i.op == "push") {
+  validateInstructions() {
+    this.ast.instructions.forEach((i) => {
+      if (i.astType == "stackInstruction") {
         if (i.memorySegment == "constant") {
-          // push constant 7
-          // @7
-          // D=A
-          // @SP
-          // M=D // push D=7 onto stack
-          // M=M+1
-          iiComment(`D = ${i.index}`);
-          asm.push(`@${i.index}`);
-          asm.push("D=A");
-        } else {
-          // push segment i
-          // @segment
-          // D=A
-          // @i
-          // A=D+A
-          // D=M
-          iiComment(`D = RAM[${seg2ptr[i.memorySegment]} + ${i.index}]`);
-          asm.push(`@${seg2ptr[i.memorySegment]}`);
-          asm.push("D=A");
-          asm.push(`@${i.index}`);
-          asm.push("A=D+A");
-          asm.push("D=M");
+          if (i.index > 32767) this.compileErrors.push({ message: "Exceeds maximum constant (32767)", span: i.span });
+          if (i.op == "pop") this.compileErrors.push({ message: "Cannot pop to constant segment", span: i.span });
         }
-        iiComment("RAM[SP] = D");
-        asm.push("@SP");
-        asm.push("A=M");
-        asm.push("M=D");
-        iiComment("SP++");
-        asm.push("@SP");
-        asm.push("M=M+1");
-      }
-      if (i.op == "pop") {
-        if (i.memorySegment == "constant") throw Error("Should have been caught by validation");
-        iiComment(`addr(R13)=segment+i`);
-        asm.push(`@${seg2ptr[i.memorySegment]}`);
-        asm.push("D=A");
-        asm.push(`@${i.index}`);
-        asm.push("D=D+A");
-        asm.push("@R13");
-        asm.push("M=D");
-        iiComment(`SP--`);
-        asm.push("@SP");
-        asm.push("M=M-1");
-        iiComment(`RAM[addr] = RAM[SP]`);
-        asm.push("@SP");
-        asm.push("D=A");
-        asm.push("@R13");
-        asm.push("M=D");
-        asm.push("A=D");
-      }
-    } else if (i.astType == "opInstruction") {
-      if (["add", "sub", "and", "or", "eq", "gt", "lt"].includes(i.op)) {
-        // binary operation
-        iiComment("D=pop");
-        asm.push("@SP");
-        asm.push("M=M-1");
-        asm.push("@SP");
-        asm.push("A=M");
-        asm.push("D=M");
-        iiComment("M=pop");
-        asm.push("@SP");
-        asm.push("M=M-1");
-        asm.push("@SP");
-        asm.push("A=M");
-        iiComment(`D=D ${i.op} M`);
-        switch (i.op) {
-          case "add":
-            asm.push("M=D+M");
-            break;
-          case "sub":
-            asm.push("M=D-M");
-            break;
-          case "and":
-            asm.push("M=D&M");
-            break;
-          case "or":
-            asm.push("M=D|M");
-            break;
-          default:
-            throw Error(`VM operation ${i.op} not implemented in compiler`); // TODO: eq,gt,lt op
+        if (i.memorySegment == "temp") {
+          if (i.index > 7) this.compileErrors.push({ message: "Exceeds maximum temp segment size (7)", span: i.span });
         }
-      } else {
-        // unary operation
-        iiComment("D=pop");
-        asm.push("@SP");
-        asm.push("M=M-1");
-        asm.push("@SP");
-        iiComment(`D=${i.op} D`);
-        switch (i.op) {
-          case "neg":
-            asm.push("D=-M");
-            break;
-          case "not":
-            asm.push("D=!M");
-            break;
-          default:
-            throw Error();
+        if (i.memorySegment == "static") {
+          if (i.index > 240) this.compileErrors.push({ message: "Exceeds maximum static segment size (240)", span: i.span });
         }
       }
-    }
-
-    addSpan(startLine);
-  });
-
-  return { asm, spans, compileErrors };
-};
+    });
+  }
+}
