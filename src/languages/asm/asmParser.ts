@@ -147,6 +147,7 @@ class AsmParser extends EmbeddedActionsParser {
       { ALT: () => this.CONSUME(keywords.M) },
       { ALT: () => this.CONSUME(keywords.DM) },
       { ALT: () => this.CONSUME(keywords.MD) },
+      { ALT: () => this.CONSUME(keywords.AD) },
       { ALT: () => this.CONSUME(keywords.AMD) },
       { ALT: () => this.CONSUME(keywords.AM) },
       { ALT: () => this.CONSUME(keywords.ADM) },

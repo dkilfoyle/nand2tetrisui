@@ -1,9 +1,9 @@
 import { AgGridReact } from "@ag-grid-community/react";
-import { Box } from "@chakra-ui/react";
+import { Box, Flex, HStack, Radio, RadioGroup, VStack } from "@chakra-ui/react";
 import { useAtom } from "jotai";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { selectedPartAtom, symbolTableAtom, testFinishedTimeAtom } from "../../store/atoms";
-import { ColDef } from "@ag-grid-community/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { chipAtom, selectedPartAtom, symbolTableAtom, testFinishedTimeAtom } from "../../store/atoms";
+import { ColDef, RowClassParams } from "@ag-grid-community/core";
 import { RAM } from "@nand2tetris/web-ide/simulator/src/chip/builtins/sequential/ram.tsx";
 import { FormatHeader } from "./FormatHeader";
 import { NumberFormatter } from "./Formatter";
@@ -15,8 +15,10 @@ interface IRamRow {
 
 export function RamTable() {
   const [part] = useAtom(selectedPartAtom);
+  const [chip] = useAtom(chipAtom);
   const [testFinishedTime] = useAtom(testFinishedTimeAtom);
   const [symbolTable] = useAtom(symbolTableAtom);
+  const [offset, setOffset] = useState("0");
   const gridRef = useRef<AgGridReact<IRamRow>>(null);
 
   const defaultColDef = useMemo<ColDef>(() => {
@@ -28,8 +30,8 @@ export function RamTable() {
   }, []);
 
   const [colDefs] = useState<ColDef[]>([
-    { field: "address", width: 100, headerComponentParams: { format: "D" }, valueFormatter: NumberFormatter },
-    { field: "value", width: 100, headerComponentParams: { format: "D" }, valueFormatter: NumberFormatter },
+    { field: "address", width: 100, headerComponent: FormatHeader, headerComponentParams: { format: "D" }, valueFormatter: NumberFormatter },
+    { field: "value", width: 100, headerComponent: FormatHeader, headerComponentParams: { format: "D" }, valueFormatter: NumberFormatter },
     { field: "symbol", width: 150 },
   ]);
 
@@ -57,30 +59,37 @@ export function RamTable() {
     // console.log(selectedRows);
   }, []);
 
-  // useEffect(() => {
-  //   console.log("PinTable", part);
-  // }, [part]);
+  useEffect(() => {
+    gridRef.current?.api?.ensureIndexVisible(Number(offset), "top");
+  }, [offset]);
 
-  const components = useMemo<{
-    [p: string]: any;
-  }>(() => {
-    return {
-      agColumnHeader: FormatHeader,
-    };
-  }, []);
+  const getRowStyle = useCallback(
+    (params: RowClassParams<IRamRow>) => {
+      if (params.rowIndex == chip?.get("Memory", 0)?.busVoltage) return { backgroundColor: "#CC333344" };
+    },
+    [chip]
+  );
 
   return (
-    <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">
-      <AgGridReact
-        ref={gridRef}
-        rowData={rowData}
-        columnDefs={colDefs}
-        defaultColDef={defaultColDef}
-        components={components}
-        onSelectionChanged={onSelectionChanged}
-        rowSelection="single"
-        headerHeight={30}
-      />
-    </Box>
+    <Flex direction="column" h="100%" gap={2} p={2}>
+      <RadioGroup onChange={setOffset} value={offset} size="sm">
+        <HStack>
+          <Radio value="0">Base</Radio>
+          <Radio value="256">Stack</Radio>
+        </HStack>
+      </RadioGroup>
+      <Box w="100%" h="100%" className="ag-theme-quartz">
+        <AgGridReact
+          ref={gridRef}
+          rowData={rowData}
+          columnDefs={colDefs}
+          getRowStyle={getRowStyle}
+          defaultColDef={defaultColDef}
+          onSelectionChanged={onSelectionChanged}
+          rowSelection="single"
+          headerHeight={30}
+        />
+      </Box>
+    </Flex>
   );
 }

@@ -1,5 +1,5 @@
 import { CompilationError, Span } from "../parserUtils";
-import { IAstVm, IAstVmInstruction } from "./vmParser";
+import { IAstVm, IAstVmInstruction, IAstVmOpInstruction } from "./vmParser";
 
 const printVmInstruction = (i: IAstVmInstruction) => {
   if (i.astType == "stackInstruction") {
@@ -51,6 +51,7 @@ class VmCompiler {
   public spans: Span[] = [];
   public compileErrors: CompilationError[] = [];
   public startLine: number = 0;
+  public boolCount: number = 0;
 
   constructor(public ast: IAstVm, public commentLevel: number) {}
 
@@ -81,6 +82,13 @@ class VmCompiler {
     this.asm.push("D=M");
   }
 
+  pushConstant(x: number) {
+    this.iiComment(`Load D = ${x}`);
+    this.asm.push(`@${x}`);
+    this.asm.push("D=A");
+    this.pushD();
+  }
+
   compile() {
     const compileErrors = validateInstructions(this.ast.instructions);
     if (compileErrors.length > 0) return { asm: [], spans: [], compileErrors };
@@ -102,9 +110,7 @@ class VmCompiler {
             // @SP
             // M=D // push D=7 onto stack
             // M=M+1
-            this.iiComment(`D = ${i.index}`);
-            this.asm.push(`@${i.index}`);
-            this.asm.push("D=A");
+            this.pushConstant(i.index);
           } else {
             // push segment i
             // @segment
@@ -118,8 +124,8 @@ class VmCompiler {
             this.asm.push(`@${i.index}`);
             this.asm.push("A=D+A");
             this.asm.push("D=M");
+            this.pushD();
           }
-          this.pushD();
         }
         if (i.op == "pop") {
           if (i.memorySegment == "constant") throw Error("Should have been caught by validation");
@@ -159,6 +165,11 @@ class VmCompiler {
             case "or":
               this.asm.push("M=D|M");
               break;
+            case "eq":
+            case "lt":
+            case "gt":
+              this.booleanOp(i);
+              break;
             default:
               throw Error(`VM operation ${i.op} not implemented in compiler`); // TODO: eq,gt,lt op
           }
@@ -180,6 +191,23 @@ class VmCompiler {
       }
     });
     return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors };
+  }
+
+  booleanOp(i: IAstVmOpInstruction) {
+    const jump = `J${i.op.toUpperCase()}`;
+    this.asm.push("D=M-D");
+    this.asm.push(`@BOOL${this.boolCount}T`);
+    this.asm.push(`D; ${jump}`);
+    // else
+    this.pushConstant(0);
+    this.asm.push(`@BOOL${this.boolCount}X`);
+    this.asm.push("0;JMP");
+    this.asm.push(`(BOOL${this.boolCount}T)`);
+    this.asm.push("@1");
+    this.asm.push("AD=-A");
+    this.pushD();
+    this.asm.push(`(BOOL${this.boolCount}X)`);
+    this.boolCount++;
   }
 
   sComment(c: string) {

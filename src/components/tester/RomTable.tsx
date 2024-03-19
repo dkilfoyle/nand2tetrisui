@@ -3,7 +3,7 @@ import { Box } from "@chakra-ui/react";
 import { useAtom } from "jotai";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { chipAtom, selectedPartAtom, symbolTableAtom, testFinishedTimeAtom } from "../../store/atoms";
-import { ColDef } from "@ag-grid-community/core";
+import { ColDef, RowClassParams } from "@ag-grid-community/core";
 import { RAM } from "@nand2tetris/web-ide/simulator/src/chip/builtins/sequential/ram.tsx";
 import { disassemble } from "../../languages/asm/asmCompiler";
 import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
@@ -67,9 +67,23 @@ export function RomTable() {
   //   console.log("PinTable", part);
   // }, [part]);
 
+  const getRowStyle = useCallback(
+    (params: RowClassParams<IRomRow>) => {
+      if (params.rowIndex == chip?.get("PC")?.busVoltage) return { backgroundColor: "#CC333344" };
+    },
+    [chip]
+  );
+
   return (
     <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">
-      <AgGridReact ref={gridRef} rowData={rowData} columnDefs={colDefs} onSelectionChanged={onSelectionChanged} rowSelection="single" />
+      <AgGridReact
+        ref={gridRef}
+        rowData={rowData}
+        getRowStyle={getRowStyle}
+        columnDefs={colDefs}
+        onSelectionChanged={onSelectionChanged}
+        rowSelection="single"
+      />
     </Box>
   );
 }
