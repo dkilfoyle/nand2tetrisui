@@ -85,7 +85,7 @@ export function FileTree() {
 
   return (
     <div style={{ minHeight: "0", height: "100%", overflow: "auto" }}>
-      <Tree treeData={fileTree} defaultExpandedKeys={["Project05", "Project06"]} showLine onSelect={onSelect} icon={getIcon}></Tree>
+      <Tree treeData={fileTree} defaultExpandedKeys={["Project06", "Project07"]} showLine onSelect={onSelect} icon={getIcon}></Tree>
     </div>
   );
 }

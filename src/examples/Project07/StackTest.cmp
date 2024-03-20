@@ -1,2 +1,2 @@
-|  RAM[0]  | RAM[256] | RAM[257] | RAM[258] | RAM[259] | RAM[260] | RAM[261] | RAM[262] | RAM[263] | RAM[264] | RAM[265] |
-|     266  |      -1  |       0  |       0  |       0  |      -1  |       0  |      -1  |       0  |       0  |     -91  |
+|  Memory[0]  | Memory[256] | Memory[257] | Memory[258] | Memory[259] | Memory[260] | Memory[261] | Memory[262] | Memory[263] | Memory[264] | Memory[265] |
+|     266     |         -1  |          0  |          0  |          0  |         -1  |          0  |         -1  |          0  |          0  |        -91  |

@@ -38,7 +38,7 @@ export function Schematic() {
         (e) => {
           // hwSchematic.setErrorText(e);
           console.log("hwscheme error", e);
-          throw e;
+          // throw e;
         }
       );
   }, [elk]);
@@ -79,7 +79,7 @@ export function Schematic() {
         (e) => {
           // hwSchematic.setErrorText(e);
           console.log("hwscheme error", e);
-          throw e;
+          /// throw e;
         }
       );
     }

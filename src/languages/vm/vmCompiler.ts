@@ -55,37 +55,42 @@ class VmCompiler {
 
   constructor(public ast: IAstVm, public commentLevel: number) {}
 
+  write(s: string) {
+    if (s.startsWith("(")) this.asm.push(s);
+    else this.asm.push(`  ${s}`);
+  }
+
   pushD() {
     this.iiComment("push D");
-    this.asm.push("@SP");
-    this.asm.push("A=M");
-    this.asm.push("M=D");
+    this.write("@SP");
+    this.write("A=M");
+    this.write("M=D");
     this.iiComment("SP++");
-    this.asm.push("@SP");
-    this.asm.push("M=M+1");
+    this.write("@SP");
+    this.write("M=M+1");
   }
 
   popM() {
     this.iiComment("pop M");
-    this.asm.push("@SP");
-    this.asm.push("M=M-1");
-    this.asm.push("@SP");
-    this.asm.push("A=M");
+    this.write("@SP");
+    this.write("M=M-1");
+    this.write("@SP");
+    this.write("A=M");
   }
 
   popD() {
     this.iiComment("pop D");
-    this.asm.push("@SP");
-    this.asm.push("M=M-1");
-    this.asm.push("@SP");
-    this.asm.push("A=M");
-    this.asm.push("D=M");
+    this.write("@SP");
+    this.write("M=M-1");
+    this.write("@SP");
+    this.write("A=M");
+    this.write("D=M");
   }
 
   pushConstant(x: number) {
     this.iiComment(`Load D = ${x}`);
-    this.asm.push(`@${x}`);
-    this.asm.push("D=A");
+    this.write(`@${x}`);
+    this.write("D=A");
     this.pushD();
   }
 
@@ -93,13 +98,14 @@ class VmCompiler {
     const compileErrors = validateInstructions(this.ast.instructions);
     if (compileErrors.length > 0) return { asm: [], spans: [], compileErrors };
     this.sComment("Init SP to 256");
-    this.asm.push("@256");
-    this.asm.push("D=A");
-    this.asm.push("@SP");
-    this.asm.push("M=D");
+    this.write("@256");
+    this.write("D=A");
+    this.write("@SP");
+    this.write("M=D");
 
     this.ast.instructions.forEach((i) => {
       this.startSpan();
+      this.write("\n");
       this.iComment(i);
       if (i.astType == "stackInstruction") {
         if (i.op == "push") {
@@ -119,51 +125,55 @@ class VmCompiler {
             // A=D+A
             // D=M
             this.iiComment(`D = RAM[${seg2ptr[i.memorySegment]} + ${i.index}]`);
-            this.asm.push(`@${seg2ptr[i.memorySegment]}`);
-            this.asm.push("D=A");
-            this.asm.push(`@${i.index}`);
-            this.asm.push("A=D+A");
-            this.asm.push("D=M");
+            this.write(`@${seg2ptr[i.memorySegment]}`);
+            this.write("D=A");
+            this.write(`@${i.index}`);
+            this.write("A=D+A");
+            this.write("D=M");
             this.pushD();
           }
         }
         if (i.op == "pop") {
           if (i.memorySegment == "constant") throw Error("Should have been caught by validation");
           this.iiComment(`addr(R13)=segment+i`);
-          this.asm.push(`@${seg2ptr[i.memorySegment]}`);
-          this.asm.push("D=A");
-          this.asm.push(`@${i.index}`);
-          this.asm.push("D=D+A");
-          this.asm.push("@R13");
-          this.asm.push("M=D");
+          this.write(`@${seg2ptr[i.memorySegment]}`);
+          this.write("D=A");
+          this.write(`@${i.index}`);
+          this.write("D=D+A");
+          this.write("@R13");
+          this.write("M=D");
           this.iiComment(`SP--`);
-          this.asm.push("@SP");
-          this.asm.push("M=M-1");
+          this.write("@SP");
+          this.write("M=M-1");
           this.iiComment(`RAM[addr] = RAM[SP]`);
-          this.asm.push("@SP");
-          this.asm.push("D=A");
-          this.asm.push("@R13");
-          this.asm.push("M=D");
-          this.asm.push("A=D");
+          this.write("@SP");
+          this.write("D=A");
+          this.write("@R13");
+          this.write("M=D");
+          this.write("A=D");
         }
       } else if (i.astType == "opInstruction") {
         if (["add", "sub", "and", "or", "eq", "gt", "lt"].includes(i.op)) {
           // binary operation
           this.popD();
           this.popM();
-          this.iiComment(`D=D ${i.op} M`);
+          this.iiComment(`M=M ${i.op} D`);
           switch (i.op) {
             case "add":
-              this.asm.push("M=D+M");
+              this.write("M=D+M");
+              this.incSP();
               break;
             case "sub":
-              this.asm.push("M=D-M");
+              this.write("M=M-D");
+              this.incSP();
               break;
             case "and":
-              this.asm.push("M=D&M");
+              this.write("M=D&M");
+              this.incSP();
               break;
             case "or":
-              this.asm.push("M=D|M");
+              this.write("M=D|M");
+              this.incSP();
               break;
             case "eq":
             case "lt":
@@ -176,13 +186,15 @@ class VmCompiler {
         } else {
           // unary operation
           this.popM();
-          this.iiComment(`D=${i.op} M`);
+          this.iiComment(`M=${i.op} M`);
           switch (i.op) {
             case "neg":
-              this.asm.push("D=-M");
+              this.write("M=-M");
+              this.incSP();
               break;
             case "not":
-              this.asm.push("D=!M");
+              this.write("M=!M");
+              this.incSP();
               break;
             default:
               throw Error();
@@ -193,33 +205,38 @@ class VmCompiler {
     return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors };
   }
 
+  incSP() {
+    this.write("@SP");
+    this.write("M=M+1");
+  }
+
   booleanOp(i: IAstVmOpInstruction) {
     const jump = `J${i.op.toUpperCase()}`;
-    this.asm.push("D=M-D");
-    this.asm.push(`@BOOL${this.boolCount}T`);
-    this.asm.push(`D; ${jump}`);
+    this.write("D=M-D");
+    this.write(`@BOOL${this.boolCount}T`);
+    this.write(`D; ${jump}`);
     // else
     this.pushConstant(0);
-    this.asm.push(`@BOOL${this.boolCount}X`);
-    this.asm.push("0;JMP");
-    this.asm.push(`(BOOL${this.boolCount}T)`);
-    this.asm.push("@1");
-    this.asm.push("AD=-A");
+    this.write(`@BOOL${this.boolCount}X`);
+    this.write("0;JMP");
+    this.write(`(BOOL${this.boolCount}T)`);
+    this.write("@1");
+    this.write("AD=-A");
     this.pushD();
-    this.asm.push(`(BOOL${this.boolCount}X)`);
+    this.write(`(BOOL${this.boolCount}X)`);
     this.boolCount++;
   }
 
   sComment(c: string) {
-    if (this.commentLevel > 0) this.asm.push("// " + c);
+    if (this.commentLevel > 0) this.write("// " + c);
   }
 
   iComment(i: IAstVmInstruction) {
-    if (this.commentLevel > 1) this.asm.push("// " + printVmInstruction(i));
+    if (this.commentLevel > 1) this.write("// " + printVmInstruction(i));
   }
 
   iiComment(c: string) {
-    if (this.commentLevel > 2) this.asm.push("// - " + c);
+    if (this.commentLevel > 2) this.write("// - " + c);
   }
 
   startSpan() {

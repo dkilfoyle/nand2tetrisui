@@ -81,7 +81,7 @@ export const getColDefs = (chip: Chip | undefined, outputFormats: IAstTstOutputF
           field: opf.pinName,
           width: opf.radix == 10 ? 55 : Math.max(30, opf.radix * 7),
         });
-      if (["ARegister", "DRegister", "PC", "RAM16K", "Memory"].includes(opf.pinName)) {
+      if (["ARegister", "DRegister", "PC", "RAM16K", "Memory", "RAM"].includes(opf.pinName)) {
         const name = `${opf.pinName}${opf.index !== undefined ? `[${opf.index}]` : ""}`;
         defs.push({
           field: name,
@@ -120,7 +120,7 @@ export const getCompareRows = (chip: Chip | undefined, tests: ITests | null) => 
   return cmpLines.slice(1).map((vals) => {
     const row: Record<string, string> = {};
     colNames.forEach((colName, i) => {
-      const of = tests?.ast.outputFormats.find((of) => of.pinName.startsWith(colName));
+      const of = tests?.ast.outputFormats.find((of) => `${of.pinName}${of.index !== undefined ? `[${of.index}]` : ""}`.startsWith(colName));
       if (of) row[of.pinName + (of.index !== undefined ? `[${of.index}]` : "")] = vals[i];
     });
     return row;
@@ -211,9 +211,10 @@ export const getRowData = (
                     if (cmpRow) row[pinName + "_e"] = cmpRow[pinName];
                   }
                   if (["Memory", "RAM16K", "RAM"].includes(opf.pinName)) {
+                    // all aliases for chip.memory.RAM16K
                     const memory = getChipPart(chip, "Memory");
                     if (!memory) throw Error();
-                    const pin = memory.get(opf.pinName, opf.index);
+                    const pin = memory.get("RAM16K", opf.index);
                     row[`${opf.pinName}[${opf.index}]`] = pin ? toDecimal(pin.busVoltage) : "?";
                     if (cmpRow) row[pinName + "_e"] = cmpRow[pinName];
                   }

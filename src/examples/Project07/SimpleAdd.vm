@@ -8,6 +8,6 @@
 // push constant 8
 // add
 
-push constant 7
-push constant 7
-eq
+push constant 5
+push constant 3
+sub

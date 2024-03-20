@@ -42,14 +42,14 @@ export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name
   const parseAndCompile = useCallback(
     (code: string) => {
       const { ast, parseErrors } = parseAsm(code);
-      console.log(ast, parseErrors);
+      // console.log(ast, parseErrors);
       if (parseErrors.length > 0) setErrors(parseErrors);
       else {
         // setAst(ast);
         const { instructions, symbolTable } = compileAsm(ast);
         setCompiledHack(instructions);
         setSymbolTable(symbolTable);
-        console.log(instructions, symbolTable);
+        // console.log(instructions, symbolTable);
         setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
         setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
       }
