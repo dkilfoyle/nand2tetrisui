@@ -57,6 +57,7 @@ export function RomTable() {
       else return [];
     } else return [];
   }, [part, chip, testFinishedTime, symbolTable]);
+  // TODO: replace testFinishedTime dependency with useClockFrame
 
   const onSelectionChanged = useCallback(() => {
     // const selectedRows = gridRef.current!.api.getSelectedRows();

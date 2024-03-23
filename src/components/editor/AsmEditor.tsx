@@ -6,13 +6,98 @@ import { activeTabAtom, compiledHackAtom, compiledChipAtom, selectedPartAtom, sy
 import { parseAsm } from "../../languages/asm/asmParser";
 import { useDebouncedCallback } from "use-debounce";
 import { compileAsm } from "../../languages/asm/asmCompiler";
-import { compileHdl } from "../../languages/hdl/hdlCompiler";
+// import { compileHdl } from "../../languages/hdl/hdlCompiler";
 import { parseHdl } from "../../languages/hdl/hdlParser";
 import { sourceCodes } from "../../examples/projects";
 // import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
+import { Chip, Pin } from "@nand2tetris/web-ide/simulator/src/chip/chip";
+import { CPU, Memory, ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
+import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
+import { compileHdl } from "../../languages/hdl/hdlCompiler";
+
+// TODO: getBuiltin("Computer")
+
+export class MyComputer extends Chip {
+  cpu = new CPU();
+  ram = new Memory();
+  rom = new ROM32K();
+
+  constructor() {
+    super(["reset"], []);
+    this.name = "Computer";
+    this.cpu.name = "CPU";
+    this.ram.name = "Memory";
+    this.rom.name = "ROM32K";
+
+    Clock.get().$.subscribe(({ level }) => {
+      if (level === 0) {
+        this.cpu.tock();
+        this.ram.tock();
+        this.rom.tock();
+      } else {
+        this.cpu.tick();
+        this.ram.tick();
+        this.rom.tick();
+      }
+    });
+
+    this.parts.add(this.cpu);
+    this.parts.add(this.ram);
+    this.parts.add(this.rom);
+
+    this.wire(this.cpu, [
+      { from: { name: "reset", start: 0 }, to: { name: "reset", start: 0 } },
+      {
+        from: { name: "instruction", start: 0 },
+        to: { name: "instruction", start: 0 },
+      },
+      { from: { name: "oldOutM", start: 0 }, to: { name: "inM", start: 0 } },
+      { from: { name: "writeM", start: 0 }, to: { name: "writeM", start: 0 } },
+      {
+        from: { name: "addressM", start: 0 },
+        to: { name: "addressM", start: 0 },
+      },
+      { from: { name: "newInM", start: 0 }, to: { name: "outM", start: 0 } },
+      { from: { name: "pc", start: 0 }, to: { name: "pc", start: 0 } },
+    ]);
+
+    this.wire(this.rom, [
+      { from: { name: "pc", start: 0 }, to: { name: "address", start: 0 } },
+      {
+        from: { name: "instruction", start: 0 },
+        to: { name: "out", start: 0 },
+      },
+    ]);
+
+    this.wire(this.ram, [
+      { from: { name: "newInM", start: 0 }, to: { name: "in", start: 0 } },
+      { from: { name: "writeM", start: 0 }, to: { name: "load", start: 0 } },
+      {
+        from: { name: "addressM", start: 0 },
+        to: { name: "address", start: 0 },
+      },
+      { from: { name: "oldOutM", start: 0 }, to: { name: "out", start: 0 } },
+    ]);
+  }
+
+  override eval() {
+    super.eval();
+  }
+
+  override get(name: string, offset?: number): Pin | undefined {
+    if (name.startsWith("PC") || name.startsWith("ARegister") || name.startsWith("DRegister")) {
+      return this.cpu.get(name);
+    }
+    if (name.startsWith("RAM16K")) {
+      return this.ram.get(name, offset);
+    }
+    return super.get(name, offset);
+  }
+}
 
 const computerAST = parseHdl(sourceCodes["./Project05/Computer.hdl"]);
 const computer = await compileHdl(computerAST.ast);
+// const computer = new MyComputer();
 // const rom = [...computer.chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
 
 export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name: string; sourceCode: string; isCompiledViewer?: boolean }) {
@@ -42,16 +127,18 @@ export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name
   const parseAndCompile = useCallback(
     (code: string) => {
       const { ast, parseErrors } = parseAsm(code);
-      // console.log(ast, parseErrors);
-      if (parseErrors.length > 0) setErrors(parseErrors);
-      else {
+      setErrors(parseErrors);
+      console.log(ast, parseErrors);
+      if (parseErrors.length == 0) {
         // setAst(ast);
         const { instructions, symbolTable } = compileAsm(ast);
         setCompiledHack(instructions);
         setSymbolTable(symbolTable);
         // console.log(instructions, symbolTable);
         setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
+        // setCompiledChip({ chip: computer, ast: computerAST.ast });
         setSelectedPart([...computer.chip.parts.values()].find((p) => p.name == "Memory"));
+        // setSelectedPart([...computer.ram.parts.values()][2]);
       }
     },
     [setCompiledHack, setCompiledChip, setSelectedPart, setSymbolTable]
@@ -146,7 +233,7 @@ export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name
       },
       [parseAndCompile]
     ),
-    500
+    1500
   );
 
   return <Editor language="asm" value={sourceCode} onChange={onValueChange} onMount={onMount} />;

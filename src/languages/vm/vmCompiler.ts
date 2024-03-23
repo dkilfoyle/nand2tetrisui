@@ -1,5 +1,5 @@
 import { CompilationError, Span } from "../parserUtils";
-import { IAstVm, IAstVmInstruction, IAstVmOpInstruction } from "./vmParser";
+import { IAstVm, IAstVmInstruction } from "./vmParser";
 
 const printVmInstruction = (i: IAstVmInstruction) => {
   if (i.astType == "stackInstruction") {
@@ -60,40 +60,6 @@ class VmCompiler {
     else this.asm.push(`  ${s}`);
   }
 
-  pushD() {
-    this.iiComment("push D");
-    this.write("@SP");
-    this.write("A=M");
-    this.write("M=D");
-    this.iiComment("SP++");
-    this.write("@SP");
-    this.write("M=M+1");
-  }
-
-  popM() {
-    this.iiComment("pop M");
-    this.write("@SP");
-    this.write("M=M-1");
-    this.write("@SP");
-    this.write("A=M");
-  }
-
-  popD() {
-    this.iiComment("pop D");
-    this.write("@SP");
-    this.write("M=M-1");
-    this.write("@SP");
-    this.write("A=M");
-    this.write("D=M");
-  }
-
-  pushConstant(x: number) {
-    this.iiComment(`Load D = ${x}`);
-    this.write(`@${x}`);
-    this.write("D=A");
-    this.pushD();
-  }
-
   compile() {
     const compileErrors = validateInstructions(this.ast.instructions);
     if (compileErrors.length > 0) return { asm: [], spans: [], compileErrors };
@@ -109,92 +75,97 @@ class VmCompiler {
       this.iComment(i);
       if (i.astType == "stackInstruction") {
         if (i.op == "push") {
-          if (i.memorySegment == "constant") {
-            // push constant 7
-            // @7
-            // D=A
-            // @SP
-            // M=D // push D=7 onto stack
-            // M=M+1
-            this.pushConstant(i.index);
-          } else {
-            // push segment i
-            // @segment
-            // D=A
-            // @i
-            // A=D+A
-            // D=M
-            this.iiComment(`D = RAM[${seg2ptr[i.memorySegment]} + ${i.index}]`);
-            this.write(`@${seg2ptr[i.memorySegment]}`);
-            this.write("D=A");
-            this.write(`@${i.index}`);
-            this.write("A=D+A");
-            this.write("D=M");
-            this.pushD();
+          switch (i.memorySegment) {
+            case "constant":
+              this.pushConstant(i.index);
+              break;
+            case "local":
+            case "argument":
+            case "this":
+            case "that":
+            case "temp":
+              this.moveSegmentToD(seg2ptr[i.memorySegment], i.index);
+              this.pushD();
+              break;
+            case "static":
+              throw Error("push static not implemented yet");
+            case "pointer":
+              throw Error("push pointer not implemented yet");
           }
         }
         if (i.op == "pop") {
-          if (i.memorySegment == "constant") throw Error("Should have been caught by validation");
-          this.iiComment(`addr(R13)=segment+i`);
-          this.write(`@${seg2ptr[i.memorySegment]}`);
-          this.write("D=A");
-          this.write(`@${i.index}`);
-          this.write("D=D+A");
-          this.write("@R13");
-          this.write("M=D");
-          this.iiComment(`SP--`);
-          this.write("@SP");
-          this.write("M=M-1");
-          this.iiComment(`RAM[addr] = RAM[SP]`);
-          this.write("@SP");
-          this.write("D=A");
-          this.write("@R13");
-          this.write("M=D");
-          this.write("A=D");
+          switch (i.memorySegment) {
+            case "local":
+            case "argument":
+            case "this":
+            case "that":
+            case "temp":
+              this.popD();
+              this.moveDToSegment(seg2ptr[i.memorySegment], i.index);
+              break;
+            case "static":
+              throw Error("Pop static not implemented yet");
+            case "pointer":
+              throw Error("Pop pointer not implemented yet");
+            case "constant":
+              throw Error("Pop constant should have been caught by validation");
+          }
         }
       } else if (i.astType == "opInstruction") {
         if (["add", "sub", "and", "or", "eq", "gt", "lt"].includes(i.op)) {
           // binary operation
-          this.popD();
-          this.popM();
-          this.iiComment(`M=M ${i.op} D`);
+          this.iiComment("pop D,M"); // but SP only -1
+          this.write("@SP");
+          this.write("M=M-1");
+          this.write("A=M");
+          this.write("D=M");
+          this.write("A=A-1");
           switch (i.op) {
             case "add":
-              this.write("M=D+M");
-              this.incSP();
+              this.write("D=D+M");
               break;
             case "sub":
-              this.write("M=M-D");
-              this.incSP();
+              this.write("D=M-D");
               break;
             case "and":
-              this.write("M=D&M");
-              this.incSP();
+              this.write("D=D&M");
               break;
             case "or":
               this.write("M=D|M");
-              this.incSP();
               break;
             case "eq":
             case "lt":
-            case "gt":
-              this.booleanOp(i);
+            case "gt": {
+              const jump = `J${i.op.toUpperCase()}`;
+              this.write("D=M-D");
+              this.write(`@BOOL${this.boolCount}`);
+              this.write(`D; ${jump}`);
+              this.write("D=0");
+              this.write(`@ENDBOOL${this.boolCount}`);
+              this.write("0;JMP");
+              this.write(`(BOOL${this.boolCount})`);
+              this.write("D=-1");
+              this.write(`(ENDBOOL${this.boolCount})`);
+              this.write("@SP");
+              this.write("A=M-1");
+              this.boolCount++;
               break;
+            }
             default:
-              throw Error(`VM operation ${i.op} not implemented in compiler`); // TODO: eq,gt,lt op
+              throw Error(`VM operation ${i.op} not implemented in compiler`);
           }
+          this.write("M=D"); // write answer to stack
         } else {
           // unary operation
-          this.popM();
-          this.iiComment(`M=${i.op} M`);
+          this.write("@SP");
+          this.write("A=M");
+          this.write("A=A-1");
           switch (i.op) {
             case "neg":
               this.write("M=-M");
-              this.incSP();
               break;
             case "not":
               this.write("M=!M");
-              this.incSP();
               break;
             default:
               throw Error();
@@ -205,26 +176,53 @@ class VmCompiler {
     return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors };
   }
 
-  incSP() {
+  pushD() {
+    this.iiComment("push D");
     this.write("@SP");
     this.write("M=M+1");
+    this.write("A=M-1");
+    this.write("M=D");
   }
 
-  booleanOp(i: IAstVmOpInstruction) {
-    const jump = `J${i.op.toUpperCase()}`;
-    this.write("D=M-D");
-    this.write(`@BOOL${this.boolCount}T`);
-    this.write(`D; ${jump}`);
-    // else
-    this.pushConstant(0);
-    this.write(`@BOOL${this.boolCount}X`);
-    this.write("0;JMP");
-    this.write(`(BOOL${this.boolCount}T)`);
-    this.write("@1");
-    this.write("AD=-A");
+  popD() {
+    this.iiComment("pop D");
+    this.write("@SP");
+    this.write("M=M-1");
+    this.write("A=M");
+    this.write("D=M");
+  }
+
+  pushConstant(x: number) {
+    this.iiComment(`Load D = ${x}`);
+    this.write(`@${x}`);
+    this.write("D=A");
     this.pushD();
-    this.write(`(BOOL${this.boolCount}X)`);
-    this.boolCount++;
+  }
+
+  moveSegmentToD(segment: string, index: number) {
+    this.iiComment(`Move ${segment}[${index}] to D`);
+    this.write(`@${index}`);
+    this.write("D=A");
+    this.write(`@${segment}`);
+    this.write(`A=D+${segment == "R5" ? "A" : "M"}`);
+    this.write("D=M");
+  }
+
+  moveDToSegment(segment: string, index: number) {
+    this.iiComment(`Move D to ${segment}[${index}]`);
+    this.write("@R13");
+    this.write("M=D"); // save value of D
+    this.write(`@${index}`);
+    this.write("D=A");
+    this.write(`@${segment}`);
+    this.write(`D=D+${segment == "R5" ? "A" : "M"}`); // D = target address
+    this.write("@R14");
+    this.write("M=D"); // save target addres to R14
+    this.write("@R13");
+    this.write("D=M"); // retrieve original value of D
+    this.write("@R14");
+    this.write("A=M"); // set address to target stored in R14
+    this.write("M=D");
   }
 
   sComment(c: string) {

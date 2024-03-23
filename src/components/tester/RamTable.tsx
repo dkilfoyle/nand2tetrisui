@@ -66,6 +66,7 @@ export function RamTable() {
       gridRef.current!.api?.ensureIndexVisible(Number(offset), "top");
     }
   }, [offset, part, symbolTable, testFinishedTime]);
+  // TODO: replace testFinishedTime dependency with useClockFrame
 
   const onSelectionChanged = useCallback(() => {
     // const selectedRows = gridRef.current!.api.getSelectedRows();

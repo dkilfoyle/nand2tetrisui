@@ -1,7 +1,7 @@
 import { isErr, Ok, Err, Result } from "@davidsouther/jiffies/lib/esm/result.js";
 // import { Chip, Connection } from "./Chip";
 import { getBuiltinChip, hasBuiltinChip } from "@nand2tetris/web-ide/simulator/src/chip/builtins/index";
-import { Connection } from "@nand2tetris/web-ide/simulator/src/chip/chip";
+import { ClockedChip, Connection } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip, IAstPart, IAstPinParts } from "./hdlInterface";
 // import { ElkBuilder } from "../../components/schematic/elkBuilder";
@@ -113,13 +113,22 @@ class ChipBuilder {
   private compileErrors: CompilationError[] = [];
   // private elkBuilder: ElkBuilder;
   constructor(private ast: IAstChip) {
-    this.chip = new Chip(
-      ast.inPins.map((pin) => ({ pin: pin.name, width: pin.width })),
-      ast.outPins.map((pin) => ({ pin: pin.name, width: pin.width })),
-      ast.name,
-      [],
-      [] // todo: parse clocked pinlist
-    );
+    if (ast.name == "Computer") {
+      this.chip = new ClockedChip(
+        ast.inPins.map((pin) => ({ pin: pin.name, width: pin.width })),
+        ast.outPins.map((pin) => ({ pin: pin.name, width: pin.width })),
+        ast.name,
+        [],
+        [] // todo: parse clocked pinlist
+      );
+    } else
+      this.chip = new Chip(
+        ast.inPins.map((pin) => ({ pin: pin.name, width: pin.width })),
+        ast.outPins.map((pin) => ({ pin: pin.name, width: pin.width })),
+        ast.name,
+        [],
+        [] // todo: parse clocked pinlist
+      );
     // this.elkBuilder = new ElkBuilder(this.chip);
   }
   Err() {

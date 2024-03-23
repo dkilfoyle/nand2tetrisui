@@ -15,6 +15,17 @@ export function Schematic() {
   const [elk, setElk] = useState<ELKNode>();
 
   useEffect(() => {
+    // setElk({
+    //   id: "0",
+    //   hwMeta: { maxId: 0, bodyText: "Empty Elk", name: "error", cls: null },
+    //   ports: [],
+    //   edges: [],
+    //   children: [],
+    //   properties: {
+    //     "org.eclipse.elk.portConstraints": "FIXED_ORDER", // can be also "FREE" or other value accepted by ELK
+    //     "org.eclipse.elk.layered.mergeEdges": 1,
+    //   },
+    // });
     if (compiledChip && autoDraw) compileElk(compiledChip.chip, compiledChip.ast, compiledChip.chip.name!).then((elk) => setElk(elk));
     else
       setElk({

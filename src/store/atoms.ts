@@ -5,7 +5,7 @@ import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip } from "../languages/hdl/hdlInterface";
 import { SymbolTable } from "../languages/asm/SymbolTable";
 
-export const defaultFile = "Project07/StackTest.vm";
+export const defaultFile = "Project07/BasicTest.vm";
 
 export const compiledChipAtom = atom<{ chip: Chip; ast: IAstChip } | undefined>(undefined);
 compiledChipAtom.debugLabel = "compiledChip";

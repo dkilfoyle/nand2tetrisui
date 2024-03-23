@@ -5,6 +5,7 @@ import { sourceCodes } from "../../examples/projects";
 import { CellClassParams, ColDef } from "@ag-grid-community/core";
 import { IAstTstCommand, IAstTstOutputFormat } from "../../languages/tst/tstInterface";
 import { ITests } from "../../store/atoms";
+import { MyComputer } from "../editor/AsmEditor";
 
 export type ITest = Record<string, string>;
 export interface ITestsOutcome {
@@ -44,13 +45,13 @@ export const getColDefs = (chip: Chip | undefined, outputFormats: IAstTstOutputF
   if (!chip) return [];
   if (!outputFormats) return [];
   const getColWidth = (pin: Pin) => {
-    if (outputFormats.find((of) => of.pinName == pin.name)?.radix == 10) return 55;
+    if (outputFormats.find((of) => of.pinName == pin.name)?.radix == 10) return 75;
     // if (tests?.outputFormats[pin.name] == 2) return 100;
     return Math.max(30, pin.width * 7);
   };
   const defs = [];
 
-  if (chip.clocked) defs.push({ field: "time", width: 50 });
+  if (chip.clocked) defs.push({ field: "time", width: 55 });
   for (const inPin of chip.ins.entries()) {
     defs.push({ field: inPin.name, width: getColWidth(inPin) });
   }
@@ -61,7 +62,7 @@ export const getColDefs = (chip: Chip | undefined, outputFormats: IAstTstOutputF
         {
           field: outPin.name,
           headerName: "Out",
-          width: getColWidth(outPin),
+          // width: getColWidth(outPin),
           cellStyle: (params: CellClassParams) => {
             if (params.data[outPin.name + "_e"]?.startsWith("*")) return { textColor: "lightgrey" };
             if (params.data[outPin.name + "_e"] == undefined) return;
@@ -85,17 +86,17 @@ export const getColDefs = (chip: Chip | undefined, outputFormats: IAstTstOutputF
         const name = `${opf.pinName}${opf.index !== undefined ? `[${opf.index}]` : ""}`;
         defs.push({
           field: name,
-          width: opf.radix == 10 ? 55 : Math.max(30, opf.radix * 7),
+          width: name.length * 8,
           cellStyle: (params: CellClassParams) => {
             if (params.data[name + "_e"]?.startsWith("*")) return { backgroundColor: "#48BB78" };
             if (params.data[name + "_e"] == undefined) return { textColor: "#48BB78" };
-            if (params.data[name] != params.data[name + "_e"]) return { backgroundColor: "#F56565" };
+            if (params.data[name] != params.data[name + "_e"]) return { backgroundColor: "#CC333344" };
             return { textColor: "#cef7ce" };
           },
         });
       }
     });
-  defs.push({ field: "note", width: 200 });
+  defs.push({ field: "note" });
   return defs as ColDef[];
 };
 
@@ -234,6 +235,8 @@ export const getRowData = (
             chip.eval();
             clock.tock();
             clock.frame();
+          } else if (testOperation.opName == "ticktock") {
+            chip.tick();
           } else if (testOperation.opName == "expect") {
             const stringExpect = testOperation.assignment!.value;
             rows[rows.length - 1][testOperation.assignment!.id + "_e"] = stringExpect.slice(stringExpect.startsWith("%B") ? 2 : 0);
@@ -243,6 +246,7 @@ export const getRowData = (
             if (outputed) rows[rows.length - 1].note = note;
           } else if (testOperation.opName == "loadROM") {
             const rom = [...chip.parts.values()].find((p) => p.name == "ROM32K") as ROM32K;
+            // const rom = (chip as MyComputer).rom;
             if (!rom) throw Error("Trying to loadROM but no ROM32K part found");
             if (!testOperation.assignment?.value) throw Error("loadROM missing filename");
             const path = tests.tabName.substring(0, tests.tabName.lastIndexOf("/"));

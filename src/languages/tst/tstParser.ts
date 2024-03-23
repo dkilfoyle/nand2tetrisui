@@ -39,14 +39,24 @@ addToken({
 });
 
 const IdToken = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9.]*/ });
-const KeywordTokens = ["output-list", "set", "expect", "eval", "note", "output", "tick", "tock", "echo", "clear-echo", "repeat"].reduce(
-  (keywordDict: Record<string, TokenType>, keyword) => {
-    const t = addToken({ name: keyword, pattern: RegExp(keyword), longer_alt: IdToken });
-    keywordDict[keyword] = t;
-    return keywordDict;
-  },
-  {}
-);
+const KeywordTokens = [
+  "output-list",
+  "set",
+  "expect",
+  "eval",
+  "note",
+  "output",
+  "ticktock",
+  "tick",
+  "tock",
+  "echo",
+  "clear-echo",
+  "repeat",
+].reduce((keywordDict: Record<string, TokenType>, keyword) => {
+  const t = addToken({ name: keyword, pattern: RegExp(keyword), longer_alt: IdToken });
+  keywordDict[keyword] = t;
+  return keywordDict;
+}, {});
 
 KeywordTokens["loadROM"] = addToken({ name: "loadROM", pattern: /ROM32K load/ });
 
@@ -218,7 +228,11 @@ class TstParser extends EmbeddedActionsParser {
 
   tstClockOperation = this.RULE("tstClockOperation", () => {
     let ticktock: IToken;
-    this.OR([{ ALT: () => (ticktock = this.CONSUME(KeywordTokens.tick)) }, { ALT: () => (ticktock = this.CONSUME(KeywordTokens.tock)) }]);
+    this.OR([
+      { ALT: () => (ticktock = this.CONSUME(KeywordTokens.ticktock)) },
+      { ALT: () => (ticktock = this.CONSUME(KeywordTokens.tick)) },
+      { ALT: () => (ticktock = this.CONSUME(KeywordTokens.tock)) },
+    ]);
     return { opName: ticktock!.image, span: getTokenSpan(ticktock!) };
   });
 

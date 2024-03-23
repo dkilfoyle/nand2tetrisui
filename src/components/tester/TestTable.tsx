@@ -44,11 +44,10 @@ export function TestTable() {
     setOutcome(outcome);
     if (selectedPart) setPinsData(getPinsData(selectedPart || chip));
     if (gridRef.current.api) {
-      // console.log("UPDATING", rowData, colDefs);
+      console.log("UPDATING", rowData, colDefs);
       gridRef.current!.api.updateGridOptions({ rowData, columnDefs: colDefs });
     }
     setTestFinishedTime(Date.now());
-    // console.log(colDefs, rowData);
   }, [gridRef, autoUpdate, chip, selectedPart, selectedTest, setPinsData, tests, compiledHack, setTestFinishedTime]);
 
   const onSelectionChanged = useCallback(() => {
@@ -107,7 +106,7 @@ export function TestTable() {
         onSelectionChanged={onSelectionChanged}
         rowSelection="single"
         // onRowDataUpdated={onRowDataUpdated}
-        autoSizeStrategy={{ type: "fitCellContents" }}
+        // autoSizeStrategy={{ type: "fitProvidedWidth", width: 10 }}
       />
     </Flex>
   );
