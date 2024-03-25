@@ -47,6 +47,7 @@ const KeywordTokens = [
   "note",
   "output",
   "ticktock",
+  "vmstep",
   "tick",
   "tock",
   "echo",
@@ -230,6 +231,7 @@ class TstParser extends EmbeddedActionsParser {
     let ticktock: IToken;
     this.OR([
       { ALT: () => (ticktock = this.CONSUME(KeywordTokens.ticktock)) },
+      { ALT: () => (ticktock = this.CONSUME(KeywordTokens.vmstep)) },
       { ALT: () => (ticktock = this.CONSUME(KeywordTokens.tick)) },
       { ALT: () => (ticktock = this.CONSUME(KeywordTokens.tock)) },
     ]);

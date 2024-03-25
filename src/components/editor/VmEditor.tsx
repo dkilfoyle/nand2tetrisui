@@ -2,10 +2,23 @@ import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
-import { activeTabAtom, compiledAsmAtom } from "../../store/atoms";
+import {
+  activeTabAtom,
+  chipAtom,
+  compiledAsmAtom,
+  hackSpansAtom,
+  testFinishedTimeAtom,
+  vmAstAtom,
+  vmCurInstructionAtom,
+  vmSpansAtom,
+} from "../../store/atoms";
 import { useDebouncedCallback } from "use-debounce";
 import { parseVm } from "../../languages/vm/vmParser";
 import { compileVm } from "../../languages/vm/vmCompiler";
+import { Flex, Button } from "@chakra-ui/react";
+import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock";
+
+import "./VmEditor.css";
 
 export function VmEditor({ name, sourceCode }: { name: string; sourceCode: string }) {
   // const setSymbolTable = useSetAtom(symbolTableAtom);
@@ -14,7 +27,13 @@ export function VmEditor({ name, sourceCode }: { name: string; sourceCode: strin
   const setCompiledAsm = useSetAtom(compiledAsmAtom);
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
   const [activeTab] = useAtom(activeTabAtom);
-  // const [ast, setAst] = useState<IAstAsm>();
+  const [curInstruction, setCurInstruction] = useAtom(vmCurInstructionAtom);
+  const decorations = useRef<monacoT.editor.IEditorDecorationsCollection>();
+  const [vmAst, setVmAst] = useAtom(vmAstAtom);
+  const [vmSpans, setVmSpans] = useAtom(vmSpansAtom);
+  const [hackSpans] = useAtom(hackSpansAtom);
+  const [chip] = useAtom(chipAtom);
+  const setTestFinishedTime = useSetAtom(testFinishedTimeAtom);
 
   // Add error markers on parse failure
   useEffect(() => {
@@ -32,14 +51,19 @@ export function VmEditor({ name, sourceCode }: { name: string; sourceCode: strin
         console.log("VmEditor parse", ast, parseErrors);
         if (parseErrors.length > 0) setErrors(parseErrors);
         else {
-          // setAst(ast);
           const { asm, spans, compileErrors } = compileVm(ast);
+          console.log(spans);
           setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
-          if (compileErrors.length > 0) setCompiledAsm("// Compile Errors");
-          else setCompiledAsm(asm.join("\n") + "\n");
+          if (compileErrors.length > 0) {
+            setCompiledAsm("// Compile Errors");
+          } else {
+            setVmAst(ast);
+            setVmSpans(spans);
+            setCompiledAsm(asm.join("\n") + "\n");
+          }
         }
       },
-      [setCompiledAsm]
+      [setCompiledAsm, setVmAst, setVmSpans]
     ),
     500
   );
@@ -130,5 +154,69 @@ export function VmEditor({ name, sourceCode }: { name: string; sourceCode: strin
     [parseAndCompile]
   );
 
-  return <Editor language="vm" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
+  useEffect(() => {
+    if (editor.current && monaco && vmAst && curInstruction >= 0) {
+      const lastAsmLineForVmIntruction = vmSpans[curInstruction].endLineNumber;
+      console.log(
+        "last PC = ",
+        hackSpans.findIndex((hackSpan) => hackSpan.startLineNumber == lastAsmLineForVmIntruction)
+      );
+      if (decorations.current) decorations.current.clear();
+      decorations.current = editor.current.createDecorationsCollection([
+        {
+          range: new monaco.Range(
+            vmAst.instructions[curInstruction].span.startLineNumber,
+            1,
+            vmAst.instructions[curInstruction].span.endLineNumber,
+            1
+          ),
+          options: {
+            isWholeLine: true,
+            className: "highlightCurInstructionLine",
+          },
+        },
+      ]);
+    }
+  }, [vmAst, curInstruction, monaco, vmSpans, hackSpans]);
+
+  const step = useCallback(() => {
+    if (!chip) return;
+    if (curInstruction >= 0) {
+      const lastAsmLineForVmIntruction = vmSpans[curInstruction].endLineNumber;
+      const lastPC = hackSpans.findIndex((hackSpan) => hackSpan.startLineNumber == lastAsmLineForVmIntruction);
+      const getPC = () => {
+        return [...chip.parts.values()].find((p) => p.name == "CPU")?.get("PC")?.busVoltage;
+      };
+      while ((getPC() ?? 1000000) <= lastPC) {
+        chip.eval();
+        Clock.get().tick();
+        chip.eval();
+        Clock.get().tock();
+        Clock.get().frame();
+      }
+    }
+    setTestFinishedTime(Date.now());
+    if (vmAst?.instructions && curInstruction < vmAst?.instructions.length - 1) setCurInstruction(curInstruction + 1);
+  }, [chip, curInstruction, hackSpans, setCurInstruction, setTestFinishedTime, vmAst?.instructions, vmSpans]);
+
+  const reset = useCallback(() => {
+    setCurInstruction(-1);
+  }, [setCurInstruction]);
+
+  return (
+    <Flex direction="column" h="100%" bg="white">
+      <Flex p="5px" gap="5px">
+        <Button size="xs" onClick={reset}>
+          Reset
+        </Button>
+        <Button size="xs" onClick={step}>
+          Step
+        </Button>
+        <Button size="xs" onClick={() => setCurInstruction(curInstruction + 1)}>
+          Run
+        </Button>
+      </Flex>
+      <Editor language="vm" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
+    </Flex>
+  );
 }

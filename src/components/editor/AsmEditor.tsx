@@ -2,7 +2,17 @@ import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom, useSetAtom } from "jotai";
-import { activeTabAtom, compiledHackAtom, compiledChipAtom, selectedPartAtom, symbolTableAtom, compiledAsmAtom } from "../../store/atoms";
+import {
+  activeTabAtom,
+  compiledHackAtom,
+  compiledChipAtom,
+  selectedPartAtom,
+  symbolTableAtom,
+  compiledAsmAtom,
+  vmSpansAtom,
+  vmCurInstructionAtom,
+  hackSpansAtom,
+} from "../../store/atoms";
 import { parseAsm } from "../../languages/asm/asmParser";
 import { useDebouncedCallback } from "use-debounce";
 import { compileAsm } from "../../languages/asm/asmCompiler";
@@ -10,90 +20,90 @@ import { compileAsm } from "../../languages/asm/asmCompiler";
 import { parseHdl } from "../../languages/hdl/hdlParser";
 import { sourceCodes } from "../../examples/projects";
 // import { ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
-import { Chip, Pin } from "@nand2tetris/web-ide/simulator/src/chip/chip";
-import { CPU, Memory, ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
-import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
+// import { Chip, Pin } from "@nand2tetris/web-ide/simulator/src/chip/chip";
+// import { CPU, Memory, ROM32K } from "@nand2tetris/web-ide/simulator/src/chip/builtins/computer/computer";
+// import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock.js";
 import { compileHdl } from "../../languages/hdl/hdlCompiler";
 
 // TODO: getBuiltin("Computer")
 
-export class MyComputer extends Chip {
-  cpu = new CPU();
-  ram = new Memory();
-  rom = new ROM32K();
+// export class MyComputer extends Chip {
+//   cpu = new CPU();
+//   ram = new Memory();
+//   rom = new ROM32K();
 
-  constructor() {
-    super(["reset"], []);
-    this.name = "Computer";
-    this.cpu.name = "CPU";
-    this.ram.name = "Memory";
-    this.rom.name = "ROM32K";
+//   constructor() {
+//     super(["reset"], []);
+//     this.name = "Computer";
+//     this.cpu.name = "CPU";
+//     this.ram.name = "Memory";
+//     this.rom.name = "ROM32K";
 
-    Clock.get().$.subscribe(({ level }) => {
-      if (level === 0) {
-        this.cpu.tock();
-        this.ram.tock();
-        this.rom.tock();
-      } else {
-        this.cpu.tick();
-        this.ram.tick();
-        this.rom.tick();
-      }
-    });
+//     Clock.get().$.subscribe(({ level }) => {
+//       if (level === 0) {
+//         this.cpu.tock();
+//         this.ram.tock();
+//         this.rom.tock();
+//       } else {
+//         this.cpu.tick();
+//         this.ram.tick();
+//         this.rom.tick();
+//       }
+//     });
 
-    this.parts.add(this.cpu);
-    this.parts.add(this.ram);
-    this.parts.add(this.rom);
+//     this.parts.add(this.cpu);
+//     this.parts.add(this.ram);
+//     this.parts.add(this.rom);
 
-    this.wire(this.cpu, [
-      { from: { name: "reset", start: 0 }, to: { name: "reset", start: 0 } },
-      {
-        from: { name: "instruction", start: 0 },
-        to: { name: "instruction", start: 0 },
-      },
-      { from: { name: "oldOutM", start: 0 }, to: { name: "inM", start: 0 } },
-      { from: { name: "writeM", start: 0 }, to: { name: "writeM", start: 0 } },
-      {
-        from: { name: "addressM", start: 0 },
-        to: { name: "addressM", start: 0 },
-      },
-      { from: { name: "newInM", start: 0 }, to: { name: "outM", start: 0 } },
-      { from: { name: "pc", start: 0 }, to: { name: "pc", start: 0 } },
-    ]);
+//     this.wire(this.cpu, [
+//       { from: { name: "reset", start: 0 }, to: { name: "reset", start: 0 } },
+//       {
+//         from: { name: "instruction", start: 0 },
+//         to: { name: "instruction", start: 0 },
+//       },
+//       { from: { name: "oldOutM", start: 0 }, to: { name: "inM", start: 0 } },
+//       { from: { name: "writeM", start: 0 }, to: { name: "writeM", start: 0 } },
+//       {
+//         from: { name: "addressM", start: 0 },
+//         to: { name: "addressM", start: 0 },
+//       },
+//       { from: { name: "newInM", start: 0 }, to: { name: "outM", start: 0 } },
+//       { from: { name: "pc", start: 0 }, to: { name: "pc", start: 0 } },
+//     ]);
 
-    this.wire(this.rom, [
-      { from: { name: "pc", start: 0 }, to: { name: "address", start: 0 } },
-      {
-        from: { name: "instruction", start: 0 },
-        to: { name: "out", start: 0 },
-      },
-    ]);
+//     this.wire(this.rom, [
+//       { from: { name: "pc", start: 0 }, to: { name: "address", start: 0 } },
+//       {
+//         from: { name: "instruction", start: 0 },
+//         to: { name: "out", start: 0 },
+//       },
+//     ]);
 
-    this.wire(this.ram, [
-      { from: { name: "newInM", start: 0 }, to: { name: "in", start: 0 } },
-      { from: { name: "writeM", start: 0 }, to: { name: "load", start: 0 } },
-      {
-        from: { name: "addressM", start: 0 },
-        to: { name: "address", start: 0 },
-      },
-      { from: { name: "oldOutM", start: 0 }, to: { name: "out", start: 0 } },
-    ]);
-  }
+//     this.wire(this.ram, [
+//       { from: { name: "newInM", start: 0 }, to: { name: "in", start: 0 } },
+//       { from: { name: "writeM", start: 0 }, to: { name: "load", start: 0 } },
+//       {
+//         from: { name: "addressM", start: 0 },
+//         to: { name: "address", start: 0 },
+//       },
+//       { from: { name: "oldOutM", start: 0 }, to: { name: "out", start: 0 } },
+//     ]);
+//   }
 
-  override eval() {
-    super.eval();
-  }
+//   override eval() {
+//     super.eval();
+//   }
 
-  override get(name: string, offset?: number): Pin | undefined {
-    if (name.startsWith("PC") || name.startsWith("ARegister") || name.startsWith("DRegister")) {
-      return this.cpu.get(name);
-    }
-    if (name.startsWith("RAM16K")) {
-      return this.ram.get(name, offset);
-    }
-    return super.get(name, offset);
-  }
-}
+//   override get(name: string, offset?: number): Pin | undefined {
+//     if (name.startsWith("PC") || name.startsWith("ARegister") || name.startsWith("DRegister")) {
+//       return this.cpu.get(name);
+//     }
+//     if (name.startsWith("RAM16K")) {
+//       return this.ram.get(name, offset);
+//     }
+//     return super.get(name, offset);
+//   }
+// }
 
 const computerAST = parseHdl(sourceCodes["./Project05/Computer.hdl"]);
 const computer = await compileHdl(computerAST.ast);
@@ -108,6 +118,10 @@ export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name
   const [compiledAsm] = useAtom(compiledAsmAtom);
   const editor = useRef<monacoT.editor.IStandaloneCodeEditor>();
   const monaco = useMonaco();
+  const decorations = useRef<monacoT.editor.IEditorDecorationsCollection>();
+  const [spans] = useAtom(vmSpansAtom);
+  const [curInstruction] = useAtom(vmCurInstructionAtom);
+  const [hackSpans, setHackSpans] = useAtom(hackSpansAtom);
   // const cursorEvent = useRef<monacoT.IDisposable>();
 
   const [errors, setErrors] = useState<monacoT.editor.IMarkerData[]>([]);
@@ -131,9 +145,10 @@ export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name
       console.log(ast, parseErrors);
       if (parseErrors.length == 0) {
         // setAst(ast);
-        const { instructions, symbolTable } = compileAsm(ast);
+        const { instructions, symbolTable, spans } = compileAsm(ast);
         setCompiledHack(instructions);
         setSymbolTable(symbolTable);
+        setHackSpans(spans);
         // console.log(instructions, symbolTable);
         setCompiledChip({ chip: computer.chip, ast: computerAST.ast });
         // setCompiledChip({ chip: computer, ast: computerAST.ast });
@@ -141,7 +156,7 @@ export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name
         // setSelectedPart([...computer.ram.parts.values()][2]);
       }
     },
-    [setCompiledHack, setCompiledChip, setSelectedPart, setSymbolTable]
+    [setCompiledHack, setSymbolTable, setHackSpans, setCompiledChip, setSelectedPart]
   );
 
   useEffect(() => {
@@ -235,6 +250,21 @@ export function AsmEditor({ name, sourceCode, isCompiledViewer = false }: { name
     ),
     1500
   );
+
+  useEffect(() => {
+    if (editor.current && monaco && spans.length > 0 && curInstruction >= 0) {
+      if (decorations.current) decorations.current.clear();
+      decorations.current = editor.current.createDecorationsCollection([
+        {
+          range: new monaco.Range(spans[curInstruction].startLineNumber, 1, spans[curInstruction].endLineNumber, 1),
+          options: {
+            isWholeLine: true,
+            className: "highlightCurInstructionLine",
+          },
+        },
+      ]);
+    }
+  }, [curInstruction, monaco, spans]);
 
   return <Editor language="asm" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
 }

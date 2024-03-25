@@ -4,7 +4,7 @@ import { base } from "./base";
 export const VmLanguage: monaco.languages.IMonarchLanguage = {
   defaultToken: "invalid",
 
-  keywords: ["push", "pop", "add"],
+  keywords: ["push", "pop", "add", "sub"],
 
   // The main tokenizer for our languages
   tokenizer: {

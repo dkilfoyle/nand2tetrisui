@@ -234,9 +234,16 @@ export const getRowData = (
           } else if (testOperation.opName == "tock") {
             chip.eval();
             clock.tock();
+            clock.frame(); // ?move out
+          } else if (testOperation.opName == "vmstep") {
+            const getPC = () => {};
+            while (getPC() != endPC) {
+              chip.eval();
+              clock.tick();
+              chip.eval();
+              clock.tock();
+            }
             clock.frame();
-          } else if (testOperation.opName == "ticktock") {
-            chip.tick();
           } else if (testOperation.opName == "expect") {
             const stringExpect = testOperation.assignment!.value;
             rows[rows.length - 1][testOperation.assignment!.id + "_e"] = stringExpect.slice(stringExpect.startsWith("%B") ? 2 : 0);

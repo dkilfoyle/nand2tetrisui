@@ -1,7 +1,7 @@
 import { AgGridReact } from "@ag-grid-community/react";
-import { Box } from "@chakra-ui/react";
+import { Box, Flex, HStack, Radio, RadioGroup } from "@chakra-ui/react";
 import { useAtom } from "jotai";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { chipAtom, selectedPartAtom, symbolTableAtom, testFinishedTimeAtom } from "../../store/atoms";
 import { ColDef, RowClassParams } from "@ag-grid-community/core";
 import { RAM } from "@nand2tetris/web-ide/simulator/src/chip/builtins/sequential/ram.tsx";
@@ -23,6 +23,7 @@ export function RomTable() {
   const gridRef = useRef<AgGridReact<IRomRow>>(null);
   const [testFinishedTime] = useAtom(testFinishedTimeAtom);
   const [symbolTable] = useAtom(symbolTableAtom);
+  const [offset, setOffset] = useState("base");
 
   const [colDefs] = useState<ColDef[]>([
     { field: "address", width: 90, headerComponent: FormatHeader, headerComponentParams: { format: "D" }, valueFormatter: NumberFormatter },
@@ -68,23 +69,47 @@ export function RomTable() {
   //   console.log("PinTable", part);
   // }, [part]);
 
+  const PC = useMemo(() => {
+    if (!chip) return undefined;
+    const pc1 = chip?.get("PC");
+    if (pc1) return pc1.busVoltage;
+    const pc2 = [...chip.parts.values()].find((p) => p.name == "CPU")?.get("PC");
+    console.log(pc2?.busVoltage);
+    if (pc2) return pc2.busVoltage;
+    return undefined;
+  }, [chip, testFinishedTime]);
+
   const getRowStyle = useCallback(
     (params: RowClassParams<IRomRow>) => {
-      if (params.rowIndex == chip?.get("PC")?.busVoltage) return { backgroundColor: "#CC333344" };
+      if (!PC) return;
+      if (PC == params.rowIndex) return { backgroundColor: "#CC333344" };
     },
-    [chip]
+    [PC]
   );
 
+  useEffect(() => {
+    if (offset == "pc" && PC) gridRef.current?.api?.ensureIndexVisible(PC, "top");
+    if (offset == "base") gridRef.current?.api?.ensureIndexVisible(0, "top");
+  }, [PC, offset]);
+
   return (
-    <Box padding={5} w="100%" h="100%" className="ag-theme-quartz">
-      <AgGridReact
-        ref={gridRef}
-        rowData={rowData}
-        getRowStyle={getRowStyle}
-        columnDefs={colDefs}
-        onSelectionChanged={onSelectionChanged}
-        rowSelection="single"
-      />
-    </Box>
+    <Flex direction="column" h="100%" gap={2} p={2}>
+      <RadioGroup onChange={setOffset} value={offset} size="sm">
+        <HStack>
+          <Radio value="base">Base</Radio>
+          <Radio value="pc">PC</Radio>
+        </HStack>
+      </RadioGroup>
+      <Box w="100%" h="100%" className="ag-theme-quartz">
+        <AgGridReact
+          ref={gridRef}
+          rowData={rowData}
+          getRowStyle={getRowStyle}
+          columnDefs={colDefs}
+          onSelectionChanged={onSelectionChanged}
+          rowSelection="single"
+        />
+      </Box>
+    </Flex>
   );
 }

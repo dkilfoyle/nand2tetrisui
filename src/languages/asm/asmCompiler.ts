@@ -1,3 +1,4 @@
+import { Span } from "../parserUtils";
 import { SymbolTable } from "./SymbolTable";
 import { IAstAsm } from "./asmInterface";
 
@@ -90,6 +91,7 @@ export const disassemble = (instruction: string | number) => {
 
 export const compileAsm = (ast: IAstAsm) => {
   const instructions: string[] = [];
+  const spans: Span[] = [];
 
   // first pass: build symbol table for labels and vars
   let pc = 0;
@@ -116,6 +118,7 @@ export const compileAsm = (ast: IAstAsm) => {
         if (symbol.value == undefined) throw Error(`${instruction.value} value missing in symbol table`);
         instructions.push(symbol.value.toString(2).padStart(16, "0"));
       } else instructions.push(instruction.value.toString(2).padStart(16, "0"));
+      spans.push(instruction.span);
       pc++;
     } else if (instruction.astType == "cInstruction") {
       // 111 acccccc ddd jjj
@@ -124,9 +127,10 @@ export const compileAsm = (ast: IAstAsm) => {
       res += destAssembleLookup[instruction.dest?.value || "null"];
       res += jmpAssembleLookup[instruction.jmp?.value || "null"];
       instructions.push(res);
+      spans.push(instruction.span);
       pc++;
     }
   });
 
-  return { instructions, symbolTable };
+  return { instructions, symbolTable, spans };
 };

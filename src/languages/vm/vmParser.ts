@@ -122,6 +122,7 @@ class VmParser extends EmbeddedActionsParser {
     return {
       astType: "opInstruction",
       op: op.image,
+      span: getTokenSpan(op),
     } as IAstVmOpInstruction;
   });
 

@@ -4,6 +4,8 @@ import { ELKNode } from "../components/schematic/elkBuilder";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip } from "../languages/hdl/hdlInterface";
 import { SymbolTable } from "../languages/asm/SymbolTable";
+import { IAstVm } from "../languages/vm/vmParser";
+import { Span } from "../languages/parserUtils";
 
 export const defaultFile = "Project07/BasicTest.vm";
 
@@ -48,6 +50,18 @@ openFilesAtom.debugLabel = "openFiles";
 
 export const activeTabAtom = atom<string>(defaultFile);
 activeTabAtom.debugLabel = "activeTab";
+
+export const vmAstAtom = atom<IAstVm | undefined>(undefined);
+vmAstAtom.debugLabel = "vmAst";
+
+export const vmSpansAtom = atom<Span[]>([]);
+vmAstAtom.debugLabel = "vmSpans";
+
+export const vmCurInstructionAtom = atom(-1);
+vmCurInstructionAtom.debugLabel = "vmCurInstruction";
+
+export const hackSpansAtom = atom<Span[]>([]);
+hackSpansAtom.debugLabel = "hackSpans";
 
 interface IPinData {
   group: string;

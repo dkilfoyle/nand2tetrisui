@@ -70,8 +70,8 @@ class VmCompiler {
     this.write("M=D");
 
     this.ast.instructions.forEach((i) => {
+      this.write("");
       this.startSpan();
-      this.write("\n");
       this.iComment(i);
       if (i.astType == "stackInstruction") {
         if (i.op == "push") {
@@ -172,6 +172,7 @@ class VmCompiler {
           }
         }
       }
+      this.endSpan();
     });
     return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors };
   }
@@ -247,7 +248,7 @@ class VmCompiler {
       endOffset: 0,
       startColumn: 0,
       endColumn: this.asm[this.asm.length - 1].length,
-      startLineNumber: this.startLine,
+      startLineNumber: this.startLine + 1,
       endLineNumber: this.asm.length,
     });
   }

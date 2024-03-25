@@ -95,12 +95,12 @@ class AsmParser extends EmbeddedActionsParser {
   });
 
   aInstruction = this.RULE("aInstruction", () => {
-    this.CONSUME(At);
+    const attoken = this.CONSUME(At);
     let numorstr: number | string = "invalid";
-    const res = this.OR([{ ALT: () => (numorstr = this.SUBRULE(this.int).value) }, { ALT: () => (numorstr = this.CONSUME(ID).image) }]);
+    this.OR([{ ALT: () => (numorstr = this.SUBRULE(this.int).value) }, { ALT: () => (numorstr = this.CONSUME(ID).image) }]);
     return {
       value: numorstr,
-      span: res.span,
+      span: getTokenSpan(attoken),
       astType: "aInstruction",
     } as IAstAsmAInstruction;
   });
