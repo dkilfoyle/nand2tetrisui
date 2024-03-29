@@ -1,6 +1,6 @@
 import Editor, { OnMount, useMonaco } from "@monaco-editor/react";
 import type * as monacoT from "monaco-editor/esm/vs/editor/editor.api";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { checkTst, parseTst } from "../../languages/tst/tstParser";
 
@@ -8,6 +8,7 @@ import "./TstEditor.css";
 import { activeTabAtom, chipAtom, selectedTestAtom, testsAtom } from "../../store/atoms";
 import { Button, Flex, IconButton, Spacer } from "@chakra-ui/react";
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
+import { Clock } from "@nand2tetris/web-ide/simulator/src/chip/clock";
 
 export function TstEditor({
   name,
@@ -76,25 +77,31 @@ export function TstEditor({
     }
   }, [chip, parseAndCompile]);
 
+  const nextStatement = useMemo(() => {
+    if (!tests || tests.ast.commands.length == 0) return null;
+    if (selectedTest === null) return tests.ast.commands[0];
+    if (selectedTest == tests.ast.commands.length - 1) return null; // reached end
+    return tests.ast.commands[selectedTest + 1];
+  }, [selectedTest, tests]);
+
   useEffect(() => {
     if (!monaco || !decorations) return;
     // console.log("tstEditor useEffect[selectedTest]", monaco, selectedTest, tests, editor.current);
-    if (selectedTest == null || tests == null || selectedTest == -1) {
+    if (!nextStatement) {
       decorations?.clear();
       return;
     }
-    const statement = tests?.ast.commands[selectedTest];
     decorations.set([
       {
-        range: new monaco.Range(statement.span.startLineNumber, 1, statement.span.endLineNumber, 1),
+        range: new monaco.Range(nextStatement.span.startLineNumber, 1, nextStatement.span.endLineNumber, 1),
         options: {
           isWholeLine: true,
           className: "selectedTestStatement",
         },
       },
     ]);
-    editor.current?.revealLineInCenter(statement.span.startLineNumber);
-  }, [decorations, monaco, selectedTest, tests]);
+    editor.current?.revealLineInCenter(nextStatement.span.startLineNumber);
+  }, [decorations, monaco, nextStatement]);
 
   const onMount: OnMount = useCallback(
     (ed) => {
@@ -125,15 +132,18 @@ export function TstEditor({
   );
 
   const onStep = useCallback(() => {
-    if (selectedTest !== null) setSelectedTest(selectedTest + 1);
-  }, [setSelectedTest, selectedTest]);
+    if (!tests) return;
+    if (selectedTest == null) setSelectedTest(0);
+    else if (selectedTest == tests?.ast.commands.length - 1) setSelectedTest(null);
+    else setSelectedTest(selectedTest + 1);
+  }, [selectedTest, setSelectedTest, tests]);
 
   const onRun = useCallback(() => {
     if (tests !== null && tests.ast.commands.length > 0) setSelectedTest(tests.ast.commands.length - 1);
   }, [setSelectedTest, tests]);
 
   const onReset = useCallback(() => {
-    setSelectedTest(-1);
+    setSelectedTest(-2);
   }, [setSelectedTest]);
 
   return (
@@ -142,12 +152,10 @@ export function TstEditor({
         <Button size="xs" onClick={onReset}>
           Reset
         </Button>
-        <Button
-          size="xs"
-          onClick={onStep}
-          isDisabled={tests == null || tests.ast.commands.length == 0 || selectedTest == null || selectedTest == tests.ast.commands.length - 1}>
+        <Button size="xs" onClick={onStep} isDisabled={!nextStatement}>
           Step
         </Button>
+        <span>{selectedTest}</span>
         <Button size="xs" onClick={onRun} isDisabled={tests == null || selectedTest == null || tests.ast.commands.length == 0}>
           Run
         </Button>

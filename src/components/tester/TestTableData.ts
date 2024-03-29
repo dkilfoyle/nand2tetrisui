@@ -5,7 +5,6 @@ import { sourceCodes } from "../../examples/projects";
 import { CellClassParams, ColDef } from "@ag-grid-community/core";
 import { IAstTstCommand, IAstTstOutputFormat } from "../../languages/tst/tstInterface";
 import { ITests } from "../../store/atoms";
-import { MyComputer } from "../editor/AsmEditor";
 
 export type ITest = Record<string, string>;
 export interface ITestsOutcome {
@@ -139,13 +138,16 @@ export const getRowData = (
   if (!tests) return [];
   if (!chip) return [];
   if (!autoUpdate) return [];
-  if (selectedTest == -1) return [];
   if (tests.chipName !== chip.name) return [];
   // const inputValues = new Map<string, number>(); // keep track of input pin assigned values
-  const rows: Record<string, number | undefined | string>[] = [];
   chip.reset();
   const clock = Clock.get();
   clock.reset();
+  if (!selectedTest) {
+    clock.frame();
+    return [];
+  }
+  const rows: Record<string, number | undefined | string>[] = [];
 
   // if clocked chip then run all statements from 0 to selectedtest
   const startCommand = chip.clocked ? 0 : selectedTest ?? 0;
@@ -234,7 +236,6 @@ export const getRowData = (
           } else if (testOperation.opName == "tock") {
             chip.eval();
             clock.tock();
-            clock.frame(); // ?move out
           } else if (testOperation.opName == "vmstep") {
             const getPC = () => {};
             while (getPC() != endPC) {
@@ -284,6 +285,7 @@ export const getRowData = (
     });
   };
   processCommands(tests.ast.commands.slice(startCommand, endCommand + 1));
+  Clock.get().frame();
   return rows;
 };
 

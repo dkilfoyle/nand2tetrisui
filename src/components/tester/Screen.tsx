@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { useClockFrame, useClockReset } from "@nand2tetris/web-ide/components/src/clockface";
+import { useClockFrame, useClockReset } from "../../utils/clockframe";
 
 const WHITE = "white";
 const BLACK = "black";

@@ -36,7 +36,7 @@ export interface ITests {
 export const testsAtom = atom<ITests | null>(null);
 testsAtom.debugLabel = "tests";
 
-export const testBreakpointAtom = atom(-1);
+export const testBreakpointAtom = atom(-2);
 testBreakpointAtom.debugLabel = "testBreakpoint";
 
 export const selectedTestAtom = atom<number | null>(null);

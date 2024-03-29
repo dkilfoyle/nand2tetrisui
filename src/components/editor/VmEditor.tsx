@@ -192,8 +192,8 @@ export function VmEditor({ name, sourceCode }: { name: string; sourceCode: strin
         Clock.get().tick();
         chip.eval();
         Clock.get().tock();
-        Clock.get().frame();
       }
+      Clock.get().frame();
     }
     setTestFinishedTime(Date.now());
     if (vmAst?.instructions && curInstruction < vmAst?.instructions.length - 1) setCurInstruction(curInstruction + 1);
@@ -216,7 +216,7 @@ export function VmEditor({ name, sourceCode }: { name: string; sourceCode: strin
           Run
         </Button>
       </Flex>
-      <Editor language="vm" value={sourceCode} onChange={onValueChange} onMount={onMount} />;
+      <Editor language="vm" value={sourceCode} onChange={onValueChange} onMount={onMount} />
     </Flex>
   );
 }
