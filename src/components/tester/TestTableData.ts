@@ -143,10 +143,10 @@ export const getRowData = (
   chip.reset();
   const clock = Clock.get();
   clock.reset();
-  if (!selectedTest) {
-    clock.frame();
-    return [];
-  }
+  // if (!selectedTest) {
+  //   clock.frame();
+  //   return [];
+  // }
   const rows: Record<string, number | undefined | string>[] = [];
 
   // if clocked chip then run all statements from 0 to selectedtest

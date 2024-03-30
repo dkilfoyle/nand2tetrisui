@@ -1,5 +1,5 @@
 import { CompilationError, Span } from "../parserUtils";
-import { IAstVm, IAstVmInstruction } from "./vmParser";
+import { IAstVm, IAstVmInstruction, IAstVmOpInstruction, IAstVmStackInstruction } from "./vmInterface";
 
 const printVmInstruction = (i: IAstVmInstruction) => {
   if (i.astType == "stackInstruction") {
@@ -42,8 +42,8 @@ const seg2ptr: Record<string, string> = {
 // commentLevel 2 = per vm instruction comments
 // commentLevel 3 = per asm instruction comments
 
-export const compileVm = (ast: IAstVm, commentLevel = 3) => {
-  return new VmCompiler(ast, commentLevel).compile();
+export const compileVm = (filename: string, ast: IAstVm, commentLevel = 3) => {
+  return new VmCompiler(filename, ast, commentLevel).compile();
 };
 
 class VmCompiler {
@@ -53,7 +53,7 @@ class VmCompiler {
   public startLine: number = 0;
   public boolCount: number = 0;
 
-  constructor(public ast: IAstVm, public commentLevel: number) {}
+  constructor(public filename: string, public ast: IAstVm, public commentLevel: number) {}
 
   write(s: string) {
     if (s.startsWith("(")) this.asm.push(s);
@@ -73,108 +73,131 @@ class VmCompiler {
       this.write("");
       this.startSpan();
       this.iComment(i);
-      if (i.astType == "stackInstruction") {
-        if (i.op == "push") {
-          switch (i.memorySegment) {
-            case "constant":
-              this.pushConstant(i.index);
-              break;
-            case "local":
-            case "argument":
-            case "this":
-            case "that":
-            case "temp":
-              this.moveSegmentToD(seg2ptr[i.memorySegment], i.index);
-              this.pushD();
-              break;
-            case "static":
-              throw Error("push static not implemented yet");
-            case "pointer":
-              throw Error("push pointer not implemented yet");
-          }
-        }
-        if (i.op == "pop") {
-          switch (i.memorySegment) {
-            case "local":
-            case "argument":
-            case "this":
-            case "that":
-            case "temp":
-              this.popD();
-              this.moveDToSegment(seg2ptr[i.memorySegment], i.index);
-              break;
-            case "static":
-              throw Error("Pop static not implemented yet");
-            case "pointer":
-              throw Error("Pop pointer not implemented yet");
-            case "constant":
-              throw Error("Pop constant should have been caught by validation");
-          }
-        }
-      } else if (i.astType == "opInstruction") {
-        if (["add", "sub", "and", "or", "eq", "gt", "lt"].includes(i.op)) {
-          // binary operation
-          this.iiComment("pop D,M"); // but SP only -1
-          this.write("@SP");
-          this.write("M=M-1");
-          this.write("A=M");
-          this.write("D=M");
-          this.write("A=A-1");
-          switch (i.op) {
-            case "add":
-              this.write("D=D+M");
-              break;
-            case "sub":
-              this.write("D=M-D");
-              break;
-            case "and":
-              this.write("D=D&M");
-              break;
-            case "or":
-              this.write("M=D|M");
-              break;
-            case "eq":
-            case "lt":
-            case "gt": {
-              const jump = `J${i.op.toUpperCase()}`;
-              this.write("D=M-D");
-              this.write(`@BOOL${this.boolCount}`);
-              this.write(`D; ${jump}`);
-              this.write("D=0");
-              this.write(`@ENDBOOL${this.boolCount}`);
-              this.write("0;JMP");
-              this.write(`(BOOL${this.boolCount})`);
-              this.write("D=-1");
-              this.write(`(ENDBOOL${this.boolCount})`);
-              this.write("@SP");
-              this.write("A=M-1");
-              this.boolCount++;
-              break;
-            }
-            default:
-              throw Error(`VM operation ${i.op} not implemented in compiler`);
-          }
-          this.write("M=D"); // write answer to stack
-        } else {
-          // unary operation
-          this.write("@SP");
-          this.write("A=M");
-          this.write("A=A-1");
-          switch (i.op) {
-            case "neg":
-              this.write("M=-M");
-              break;
-            case "not":
-              this.write("M=!M");
-              break;
-            default:
-              throw Error();
-          }
-        }
+      switch (i.astType) {
+        case "stackInstruction":
+          this.writeStackInstruction(i);
+          break;
+        case "opInstruction":
+          this.writeArithmeticInstruction(i);
+          break;
       }
       this.endSpan();
     });
     return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors };
+  }
+
+  writeStackInstruction(i: IAstVmStackInstruction) {
+    if (i.op == "push") {
+      switch (i.memorySegment) {
+        case "constant":
+          this.pushConstant(i.index);
+          break;
+        case "local":
+        case "argument":
+        case "this":
+        case "that":
+        case "temp":
+          this.moveSegmentToD(seg2ptr[i.memorySegment], i.index);
+          this.pushD();
+          break;
+        case "static":
+          this.write(`@${this.filename}.${i.index}`);
+          this.write("D=M");
+          this.pushD();
+          break;
+        case "pointer":
+          this.write(i.index == 0 ? "@THIS" : "@THAT");
+          this.write("D=M");
+          this.pushD();
+          break;
+      }
+    }
+    if (i.op == "pop") {
+      switch (i.memorySegment) {
+        case "local":
+        case "argument":
+        case "this":
+        case "that":
+        case "temp":
+          this.popD();
+          this.moveDToSegment(seg2ptr[i.memorySegment], i.index);
+          break;
+        case "static":
+          this.popD();
+          this.write(`@${this.filename}.${i.index}`);
+          this.write("M=D");
+          break;
+        case "pointer":
+          this.popD();
+          this.write(i.index == 0 ? "@THIS" : "@THAT");
+          this.write("M=D");
+          break;
+        case "constant":
+          throw Error("Pop constant should have been caught by validation");
+      }
+    }
+  }
+
+  writeArithmeticInstruction(i: IAstVmOpInstruction) {
+    if (["add", "sub", "and", "or", "eq", "gt", "lt"].includes(i.op)) {
+      // binary operation
+      this.iiComment("pop D,M"); // but SP only -1
+      this.write("@SP");
+      this.write("M=M-1");
+      this.write("A=M");
+      this.write("D=M");
+      this.write("A=A-1");
+      switch (i.op) {
+        case "add":
+          this.write("D=D+M");
+          break;
+        case "sub":
+          this.write("D=M-D");
+          break;
+        case "and":
+          this.write("D=D&M");
+          break;
+        case "or":
+          this.write("M=D|M");
+          break;
+        case "eq":
+        case "lt":
+        case "gt": {
+          const jump = `J${i.op.toUpperCase()}`;
+          this.write("D=M-D");
+          this.write(`@BOOL${this.boolCount}`);
+          this.write(`D; ${jump}`);
+          this.write("D=0");
+          this.write(`@ENDBOOL${this.boolCount}`);
+          this.write("0;JMP");
+          this.write(`(BOOL${this.boolCount})`);
+          this.write("D=-1");
+          this.write(`(ENDBOOL${this.boolCount})`);
+          this.write("@SP");
+          this.write("A=M-1");
+          this.boolCount++;
+          break;
+        }
+        default:
+          throw Error(`VM operation ${i.op} not implemented in compiler`);
+      }
+      this.write("M=D"); // write answer to stack
+    } else {
+      // unary operation
+      this.write("@SP");
+      this.write("A=M");
+      this.write("A=A-1");
+      switch (i.op) {
+        case "neg":
+          this.write("M=-M");
+          break;
+        case "not":
+          this.write("M=!M");
+          break;
+        default:
+          throw Error();
+      }
+    }
   }
 
   pushD() {

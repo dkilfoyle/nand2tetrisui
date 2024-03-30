@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AgGridReact } from "@ag-grid-community/react";
 import "@ag-grid-community/styles/ag-grid.css";
@@ -6,16 +6,7 @@ import "@ag-grid-community/styles/ag-theme-quartz.css";
 import { ModuleRegistry } from "@ag-grid-community/core";
 import { ClientSideRowModelModule } from "@ag-grid-community/client-side-row-model";
 import { Badge, Checkbox, Flex, Spacer } from "@chakra-ui/react";
-import {
-  chipAtom,
-  testsAtom,
-  selectedTestAtom,
-  pinsDataAtom,
-  getPinsData,
-  selectedPartAtom,
-  compiledHackAtom,
-  testFinishedTimeAtom,
-} from "../../store/atoms";
+import { chipAtom, testsAtom, selectedTestAtom, pinsDataAtom, getPinsData, selectedPartAtom, compiledHackAtom } from "../../store/atoms";
 
 import "./TestTable.css";
 import { ITest, ITestsOutcome, getColDefs, getCompareRows, getOutcome, getRowData } from "./TestTableData";
@@ -31,24 +22,20 @@ export function TestTable() {
   const [autoUpdate, setAutoUpdate] = useState(true);
   const [outcome, setOutcome] = useState<ITestsOutcome>({ pass: 0, fail: 0 });
   const [compiledHack] = useAtom(compiledHackAtom);
-  const setTestFinishedTime = useSetAtom(testFinishedTimeAtom);
 
   const gridRef = useRef<AgGridReact<ITest>>(null);
 
   useEffect(() => {
-    if (!gridRef.current) return;
+    if (!gridRef.current?.api) return;
     const compareRows = getCompareRows(chip, tests);
     const colDefs = getColDefs(chip, tests?.ast.outputFormats);
     const rowData = getRowData(chip, compiledHack, tests, compareRows, autoUpdate, selectedTest);
     const outcome = getOutcome(chip, rowData);
     setOutcome(outcome);
     if (selectedPart) setPinsData(getPinsData(selectedPart || chip));
-    if (gridRef.current.api) {
-      console.log("UPDATING", rowData, colDefs);
-      gridRef.current!.api.updateGridOptions({ rowData, columnDefs: colDefs });
-    }
-    setTestFinishedTime(Date.now());
-  }, [gridRef, autoUpdate, chip, selectedPart, selectedTest, setPinsData, tests, compiledHack, setTestFinishedTime]);
+    console.log("UPDATING", rowData, colDefs);
+    gridRef.current!.api.updateGridOptions({ rowData, columnDefs: colDefs });
+  }, [gridRef, autoUpdate, chip, selectedPart, selectedTest, setPinsData, tests, compiledHack]);
 
   const onSelectionChanged = useCallback(() => {
     if (!chip) return;

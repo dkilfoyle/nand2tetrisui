@@ -1,5 +1,6 @@
 import { EmbeddedActionsParser, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
 import { getTokenSpan } from "../parserUtils";
+import { IAstVmInstruction, IAstVm, IAstVmStackInstruction, IAstVmOpInstruction } from "./vmInterface";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {
@@ -33,7 +34,7 @@ const INT = addToken({ name: "INT", pattern: /[0-9]+/ });
 
 const keywords: Record<string, TokenType> = {};
 const keywordsCategory = addToken({ name: "keywords", pattern: Lexer.NA });
-["push", "pop", "function", "call", "return", "goto", "if-goto", "label"].forEach((kw) => {
+["push", "pop", "function", "call", "return", "if-goto", "goto", "label"].forEach((kw) => {
   keywords[kw] = addToken({ name: kw, pattern: kw, longer_alt: ID, categories: [keywordsCategory] });
 });
 
@@ -52,30 +53,6 @@ const operationsCategory = addToken({ name: "operations", pattern: Lexer.NA });
 allTokens.push(ID);
 const vmLexer = new Lexer(allTokens);
 
-import { Span } from "../parserUtils";
-
-interface IAstVmBase {
-  astType: "stackInstruction" | "opInstruction";
-  span: Span;
-}
-
-export interface IAstVm {
-  instructions: IAstVmInstruction[];
-}
-export type IAstVmInstruction = IAstVmStackInstruction | IAstVmOpInstruction;
-
-export interface IAstVmStackInstruction extends IAstVmBase {
-  astType: "stackInstruction";
-  op: string;
-  memorySegment: string;
-  index: number;
-}
-
-export interface IAstVmOpInstruction extends IAstVmBase {
-  astType: "opInstruction";
-  op: string;
-}
-
 class VmParser extends EmbeddedActionsParser {
   constructor() {
     super(allTokens);
@@ -89,7 +66,33 @@ class VmParser extends EmbeddedActionsParser {
   });
 
   public instruction = this.RULE("instruction", () => {
-    return this.OR([{ ALT: () => this.SUBRULE(this.stackInstruction) }, { ALT: () => this.SUBRULE(this.opInstruction) }]);
+    return this.OR([
+      { ALT: () => this.SUBRULE(this.stackInstruction) },
+      { ALT: () => this.SUBRULE(this.opInstruction) },
+      { ALT: () => this.SUBRULE(this.labelInstruction) },
+      { ALT: () => this.SUBRULE(this.gotoInstruction) },
+    ]);
+  });
+
+  labelInstruction = this.RULE("labelInstruction", () => {
+    const labelkw = this.CONSUME(keywords["label"]);
+    const labelName = this.CONSUME(ID);
+    return {
+      astType: "labelInstruction",
+      label: labelName,
+      span: getTokenSpan(labelkw, labelName),
+    };
+  });
+
+  gotoInstruction = this.RULE("gotoInstruction", () => {
+    const goto = this.OR([{ ALT: () => this.CONSUME(keywords["if-goto"]) }, { ALT: () => this.CONSUME(keywords["goto"]) }]);
+    const labelName = this.CONSUME(ID);
+    return {
+      astType: "gotoInstruction",
+      label: labelName,
+      gotoType: goto.image,
+      span: getTokenSpan(goto, labelName),
+    };
   });
 
   stackInstruction = this.RULE("stackInstruction", () => {
@@ -147,8 +150,8 @@ class VmParser extends EmbeddedActionsParser {
 
 const vmParser = new VmParser();
 
-export const parseVm = (asm: string) => {
-  const lexResult = vmLexer.tokenize(asm);
+export const parseVm = (vm: string) => {
+  const lexResult = vmLexer.tokenize(vm);
   vmParser.input = lexResult.tokens;
   const ast = vmParser.root();
   return {

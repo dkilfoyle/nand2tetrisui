@@ -51,7 +51,7 @@ export function VmEditor({ name, sourceCode }: { name: string; sourceCode: strin
         console.log("VmEditor parse", ast, parseErrors);
         if (parseErrors.length > 0) setErrors(parseErrors);
         else {
-          const { asm, spans, compileErrors } = compileVm(ast);
+          const { asm, spans, compileErrors } = compileVm(name.substring(name.lastIndexOf("/") + 1, name.indexOf(".vm")), ast);
           console.log(spans);
           setErrors(compileErrors.map((e) => ({ message: e.message, ...e.span, severity: 4 })));
           if (compileErrors.length > 0) {
@@ -63,7 +63,7 @@ export function VmEditor({ name, sourceCode }: { name: string; sourceCode: strin
           }
         }
       },
-      [setCompiledAsm, setVmAst, setVmSpans]
+      [name, setCompiledAsm, setVmAst, setVmSpans]
     ),
     500
   );

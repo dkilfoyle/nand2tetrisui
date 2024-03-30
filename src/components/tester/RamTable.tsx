@@ -89,6 +89,8 @@ export function RamTable() {
     switch (offset) {
       case "0":
         return 0;
+      case "16":
+        return 16;
       case "256":
         return 256;
       case "sp":
@@ -118,6 +120,7 @@ export function RamTable() {
       <RadioGroup onChange={setOffset} value={offset} size="sm">
         <HStack>
           <Radio value="0">0</Radio>
+          <Radio value="16">Static</Radio>
           <Radio value="256">256</Radio>
           <Radio value="sp">SP</Radio>
           <Radio value="lcl">LCL</Radio>

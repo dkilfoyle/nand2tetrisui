@@ -77,9 +77,13 @@ export function TstEditor({
     }
   }, [chip, parseAndCompile]);
 
+  // selectedTest
+  // null - run all tests if autoUpdate
+  // -1   - enter stepping mode paused before command 0
+
   const nextStatement = useMemo(() => {
     if (!tests || tests.ast.commands.length == 0) return null;
-    if (selectedTest === null) return tests.ast.commands[0];
+    if (selectedTest === null) return null;
     if (selectedTest == tests.ast.commands.length - 1) return null; // reached end
     return tests.ast.commands[selectedTest + 1];
   }, [selectedTest, tests]);
@@ -133,7 +137,7 @@ export function TstEditor({
 
   const onStep = useCallback(() => {
     if (!tests) return;
-    if (selectedTest == null) setSelectedTest(0);
+    if (selectedTest == null) setSelectedTest(-1);
     else if (selectedTest == tests?.ast.commands.length - 1) setSelectedTest(null);
     else setSelectedTest(selectedTest + 1);
   }, [selectedTest, setSelectedTest, tests]);
@@ -143,7 +147,7 @@ export function TstEditor({
   }, [setSelectedTest, tests]);
 
   const onReset = useCallback(() => {
-    setSelectedTest(-2);
+    setSelectedTest(-1);
   }, [setSelectedTest]);
 
   return (

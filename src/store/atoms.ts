@@ -4,10 +4,10 @@ import { ELKNode } from "../components/schematic/elkBuilder";
 import { Chip } from "@nand2tetris/web-ide/simulator/src/chip/chip";
 import { IAstChip } from "../languages/hdl/hdlInterface";
 import { SymbolTable } from "../languages/asm/SymbolTable";
-import { IAstVm } from "../languages/vm/vmParser";
+import { IAstVm } from "../languages/vm/vmInterface";
 import { Span } from "../languages/parserUtils";
 
-export const defaultFile = "Project07/BasicTest.vm";
+export const defaultFile = "Project08/BasicLoop.vm";
 
 export const compiledChipAtom = atom<{ chip: Chip; ast: IAstChip } | undefined>(undefined);
 compiledChipAtom.debugLabel = "compiledChip";
