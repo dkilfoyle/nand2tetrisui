@@ -202,6 +202,7 @@ class AsmParser extends EmbeddedActionsParser {
       { ALT: () => this.CONSUME(keywords.JLE) },
       { ALT: () => this.CONSUME(keywords.JEQ) },
       { ALT: () => this.CONSUME(keywords.JMP) },
+      { ALT: () => this.CONSUME(keywords.JNE) },
     ]);
     return { value: jmp.image, span: getTokenSpan(jmp) } as IAstAsmJmp;
   });

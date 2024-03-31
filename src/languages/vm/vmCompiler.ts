@@ -6,26 +6,11 @@ const printVmInstruction = (i: IAstVmInstruction) => {
     return `${i.op} ${i.memorySegment} ${i.index}`;
   } else if (i.astType == "opInstruction") {
     return `${i.op}`;
+  } else if (i.astType == "gotoInstruction") {
+    return `${i.gotoType} ${i.label}`;
+  } else if (i.astType == "labelInstruction") {
+    return `${i.label}`;
   }
-};
-
-const validateInstructions = (instructions: IAstVmInstruction[]) => {
-  const compileErrors: CompilationError[] = [];
-  instructions.forEach((i) => {
-    if (i.astType == "stackInstruction") {
-      if (i.memorySegment == "constant") {
-        if (i.index > 32767) compileErrors.push({ message: "Exceeds maximum constant (32767)", span: i.span });
-        if (i.op == "pop") compileErrors.push({ message: "Cannot pop to constant segment", span: i.span });
-      }
-      if (i.memorySegment == "temp") {
-        if (i.index > 7) compileErrors.push({ message: "Exceeds maximum temp segment size (7)", span: i.span });
-      }
-      if (i.memorySegment == "static") {
-        if (i.index > 240) compileErrors.push({ message: "Exceeds maximum static segment size (240)", span: i.span });
-      }
-    }
-  });
-  return compileErrors;
 };
 
 const seg2ptr: Record<string, string> = {
@@ -61,8 +46,8 @@ class VmCompiler {
   }
 
   compile() {
-    const compileErrors = validateInstructions(this.ast.instructions);
-    if (compileErrors.length > 0) return { asm: [], spans: [], compileErrors };
+    this.validateInstructions();
+    if (this.compileErrors.length > 0) return { asm: [], spans: [], compileErrors: this.compileErrors };
     this.sComment("Init SP to 256");
     this.write("@256");
     this.write("D=A");
@@ -79,6 +64,21 @@ class VmCompiler {
           break;
         case "opInstruction":
           this.writeArithmeticInstruction(i);
+          break;
+        case "labelInstruction":
+          this.write(`(${i.label})`);
+          break;
+        case "gotoInstruction":
+          if (i.gotoType == "goto") {
+            this.write(`@${i.label}`);
+            this.write("0;JMP");
+          } else {
+            this.write("@SP");
+            this.write("AM=M-1");
+            this.write("D=M");
+            this.write(`@${i.label}`);
+            this.write("D;JNE");
+          }
           break;
       }
       this.endSpan();
@@ -289,6 +289,14 @@ class VmCompiler {
         if (i.memorySegment == "static") {
           if (i.index > 240) this.compileErrors.push({ message: "Exceeds maximum static segment size (240)", span: i.span });
         }
+      } else if (i.astType == "gotoInstruction") {
+        const findLabel = this.ast.instructions.some((ii) => {
+          if (ii.astType == "labelInstruction") {
+            if (i.label == ii.label) return true;
+          }
+          return false;
+        });
+        if (!findLabel) this.compileErrors.push({ message: "No matching label", span: i.span });
       }
     });
   }

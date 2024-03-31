@@ -79,7 +79,7 @@ class VmParser extends EmbeddedActionsParser {
     const labelName = this.CONSUME(ID);
     return {
       astType: "labelInstruction",
-      label: labelName,
+      label: labelName.image,
       span: getTokenSpan(labelkw, labelName),
     };
   });
@@ -89,7 +89,7 @@ class VmParser extends EmbeddedActionsParser {
     const labelName = this.CONSUME(ID);
     return {
       astType: "gotoInstruction",
-      label: labelName,
+      label: labelName.image,
       gotoType: goto.image,
       span: getTokenSpan(goto, labelName),
     };

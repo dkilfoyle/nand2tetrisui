@@ -8,7 +8,7 @@ interface IAstVmBase {
 export interface IAstVm {
   instructions: IAstVmInstruction[];
 }
-export type IAstVmInstruction = IAstVmStackInstruction | IAstVmOpInstruction;
+export type IAstVmInstruction = IAstVmStackInstruction | IAstVmOpInstruction | IAstVmGotoInstruction | IAstVmLabelInstruction;
 
 export interface IAstVmStackInstruction extends IAstVmBase {
   astType: "stackInstruction";
