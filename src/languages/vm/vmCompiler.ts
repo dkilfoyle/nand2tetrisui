@@ -1,15 +1,22 @@
 import { CompilationError, Span } from "../parserUtils";
-import { IAstVm, IAstVmInstruction, IAstVmOpInstruction, IAstVmStackInstruction } from "./vmInterface";
+import { IAstVm, IAstVmFunctionInstruction, IAstVmInstruction, IAstVmOpInstruction, IAstVmStackInstruction } from "./vmInterface";
 
 const printVmInstruction = (i: IAstVmInstruction) => {
-  if (i.astType == "stackInstruction") {
-    return `${i.op} ${i.memorySegment} ${i.index}`;
-  } else if (i.astType == "opInstruction") {
-    return `${i.op}`;
-  } else if (i.astType == "gotoInstruction") {
-    return `${i.gotoType} ${i.label}`;
-  } else if (i.astType == "labelInstruction") {
-    return `${i.label}`;
+  switch (i.astType) {
+    case "stackInstruction":
+      return `${i.op} ${i.memorySegment} ${i.index}`;
+    case "opInstruction":
+      return `${i.op}`;
+    case "gotoInstruction":
+      return `${i.gotoType} ${i.label}`;
+    case "labelInstruction":
+      return `${i.label}`;
+    case "functionInstruction":
+      return `function ${i.functionName} ${i.numLocals}`;
+    case "callInstruction":
+      return `call ${i.functionName}`;
+    case "returnInstruction":
+      return `return (from function ${i.functionName})`;
   }
 };
 
@@ -48,11 +55,11 @@ class VmCompiler {
   compile() {
     this.validateInstructions();
     if (this.compileErrors.length > 0) return { asm: [], spans: [], compileErrors: this.compileErrors };
-    this.sComment("Init SP to 256");
-    this.write("@256");
-    this.write("D=A");
-    this.write("@SP");
-    this.write("M=D");
+    // this.sComment("Init SP to 256");
+    // this.write("@256");
+    // this.write("D=A");
+    // this.write("@SP");
+    // this.write("M=D");
 
     this.ast.instructions.forEach((i) => {
       this.write("");
@@ -80,10 +87,97 @@ class VmCompiler {
             this.write("D;JNE");
           }
           break;
+        case "functionInstruction":
+          this.writeFunctionInstruction(i);
+          break;
+        case "returnInstruction":
+          this.writeReturnInstruction();
+          break;
+        case "callInstruction":
+          throw Error("Call note implemented yet");
       }
       this.endSpan();
     });
     return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors };
+  }
+
+  writeReturnInstruction() {
+    this.iiComment("save LCL (end of frame) in temporary var R13");
+    this.write("@LCL");
+    this.write("D=M");
+    this.write("@R13");
+    this.write("M=D");
+
+    this.iiComment("save ret addr in temp var R14");
+    this.write("@5");
+    this.write("A=D-A");
+    this.write("D=M");
+    this.write("@R14");
+    this.write("M=D");
+
+    this.iiComment("Reposition ret val for the callee");
+    this.write("@SP");
+    this.write("A=M-1");
+    this.write("D=M");
+    this.write("@ARG");
+    this.write("A=M");
+    this.write("M=D"); // reposition return value for the calle);
+
+    this.iiComment("Reposition SP for the callee");
+    this.write("D=A+1");
+    this.write("@SP");
+    this.write("M=D"); // reposition stack pointer for the calle);
+
+    this.iiComment("Restore THAT");
+    this.write("@R13");
+    this.write("AM=M-1");
+    this.write("D=M");
+    this.write("@THAT");
+    this.write("M=D"); //  restore THAT (that segment) for the calle);
+
+    this.iiComment("Restore THIS");
+    this.write("@R13");
+    this.write("AM=M-1");
+    this.write("D=M");
+    this.write("@THIS");
+    this.write("M=D"); //  THIS (this segment) for the calle);
+
+    this.iiComment("Restore ARG");
+    this.write("@R13");
+    this.write("AM=M-1");
+    this.write("D=M");
+    this.write("@ARG");
+    this.write("M=D"); // restore ARG (argument segment) for the calle);
+
+    this.iiComment("Restore LCL");
+    this.write("@R13");
+    this.write("AM=M-1");
+    this.write("D=M");
+    this.write("@LCL");
+    this.write("M=D"); //  restore LCL (local segment) for the calle);
+
+    this.iiComment("JMP to return address");
+    this.write("@R14");
+    this.write("A=M");
+    this.write("0;JMP"); //  to the return addres);
+  }
+
+  writeFunctionInstruction(i: IAstVmFunctionInstruction) {
+    this.write(`(${i.functionName})`);
+    this.iiComment("fn prolog: set LCL = current SP");
+    this.write("@SP");
+    this.write("D=M");
+    this.write("@LCL");
+    this.write("M=D");
+    this.iiComment(`fn prolong: init ${i.numLocals} local vars to 0`);
+    for (let localCount = 0; localCount < i.numLocals; localCount++) {
+      this.write("@0");
+      this.write("D=A");
+      this.write("@SP");
+      this.write("M=M+1");
+      this.write("A=M-1");
+      this.write("M=D");
+    }
   }
 
   writeStackInstruction(i: IAstVmStackInstruction) {
@@ -254,6 +348,7 @@ class VmCompiler {
   }
 
   iComment(i: IAstVmInstruction) {
+    if (i.astType == "labelInstruction") return;
     if (this.commentLevel > 1) this.write("// " + printVmInstruction(i));
   }
 
@@ -297,6 +392,11 @@ class VmCompiler {
           return false;
         });
         if (!findLabel) this.compileErrors.push({ message: "No matching label", span: i.span });
+      } else if (i.astType == "returnInstruction") {
+        if (i.functionName == "") this.compileErrors.push({ message: "return without preceeding function", span: i.span });
+      } else if (i.astType == "functionInstruction") {
+        const findRet = this.ast.instructions.some((ii) => ii.astType == "returnInstruction" && ii.functionName == i.functionName);
+        if (!findRet) this.compileErrors.push({ message: "No matching return", span: i.span });
       }
     });
   }

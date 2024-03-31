@@ -1,6 +1,16 @@
 import { EmbeddedActionsParser, ITokenConfig, Lexer, TokenType, createToken } from "chevrotain";
 import { getTokenSpan } from "../parserUtils";
-import { IAstVmInstruction, IAstVm, IAstVmStackInstruction, IAstVmOpInstruction } from "./vmInterface";
+import {
+  IAstVmInstruction,
+  IAstVm,
+  IAstVmStackInstruction,
+  IAstVmOpInstruction,
+  IAstVmCallInstruction,
+  IAstVmFunctionInstruction,
+  IAstVmGotoInstruction,
+  IAstVmLabelInstruction,
+  IAstVmReturnInstruction,
+} from "./vmInterface";
 
 const allTokens: TokenType[] = [];
 const addToken = (options: ITokenConfig) => {
@@ -29,7 +39,7 @@ addToken({
   line_breaks: true,
 });
 
-const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9_]*/ });
+const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9_.]*/ });
 const INT = addToken({ name: "INT", pattern: /[0-9]+/ });
 
 const keywords: Record<string, TokenType> = {};
@@ -54,6 +64,8 @@ allTokens.push(ID);
 const vmLexer = new Lexer(allTokens);
 
 class VmParser extends EmbeddedActionsParser {
+  public currentFunctionName = "";
+
   constructor() {
     super(allTokens);
     this.performSelfAnalysis();
@@ -71,7 +83,44 @@ class VmParser extends EmbeddedActionsParser {
       { ALT: () => this.SUBRULE(this.opInstruction) },
       { ALT: () => this.SUBRULE(this.labelInstruction) },
       { ALT: () => this.SUBRULE(this.gotoInstruction) },
+      { ALT: () => this.SUBRULE(this.callInstruction) },
+      { ALT: () => this.SUBRULE(this.functionInstruction) },
+      { ALT: () => this.SUBRULE(this.returnInstruction) },
     ]);
+  });
+
+  returnInstruction = this.RULE("returnInstruction", () => {
+    const returnkw = this.CONSUME(keywords["return"]);
+    const fn = this.currentFunctionName;
+    this.currentFunctionName = "";
+    return {
+      astType: "returnInstruction",
+      functionName: fn,
+      span: getTokenSpan(returnkw),
+    } as IAstVmReturnInstruction;
+  });
+
+  functionInstruction = this.RULE("functionInstruction", () => {
+    const functionkw = this.CONSUME(keywords["function"]);
+    const functionName = this.CONSUME(ID);
+    this.currentFunctionName = functionName.image;
+    const numLocals = this.CONSUME(INT);
+    return {
+      astType: "functionInstruction",
+      functionName: functionName.image,
+      numLocals: parseInt(numLocals.image),
+      span: getTokenSpan(functionkw, numLocals),
+    } as IAstVmFunctionInstruction;
+  });
+
+  callInstruction = this.RULE("callInstruction", () => {
+    const callkw = this.CONSUME(keywords["call"]);
+    const callName = this.CONSUME(ID);
+    return {
+      astType: "callInstruction",
+      functionName: callName.image,
+      span: getTokenSpan(callkw, callName),
+    } as IAstVmCallInstruction;
   });
 
   labelInstruction = this.RULE("labelInstruction", () => {
@@ -81,7 +130,7 @@ class VmParser extends EmbeddedActionsParser {
       astType: "labelInstruction",
       label: labelName.image,
       span: getTokenSpan(labelkw, labelName),
-    };
+    } as IAstVmLabelInstruction;
   });
 
   gotoInstruction = this.RULE("gotoInstruction", () => {
@@ -92,7 +141,7 @@ class VmParser extends EmbeddedActionsParser {
       label: labelName.image,
       gotoType: goto.image,
       span: getTokenSpan(goto, labelName),
-    };
+    } as IAstVmGotoInstruction;
   });
 
   stackInstruction = this.RULE("stackInstruction", () => {
