@@ -38,7 +38,7 @@ addToken({
   line_breaks: true,
 });
 
-const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9_.]*/ });
+const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9_.$]*/ });
 
 const LParen = addToken({ name: "LParen", label: "(", pattern: /\(/ });
 const RParen = addToken({ name: "RParen", label: ")", pattern: /\)/ });

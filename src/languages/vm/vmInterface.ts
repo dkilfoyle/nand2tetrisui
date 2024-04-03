@@ -56,6 +56,7 @@ export interface IAstVmFunctionInstruction extends IAstVmBase {
 export interface IAstVmCallInstruction extends IAstVmBase {
   astType: "callInstruction";
   functionName: string;
+  numArgs: number;
 }
 
 export interface IAstVmReturnInstruction extends IAstVmBase {

@@ -1,5 +1,12 @@
 import { CompilationError, Span } from "../parserUtils";
-import { IAstVm, IAstVmFunctionInstruction, IAstVmInstruction, IAstVmOpInstruction, IAstVmStackInstruction } from "./vmInterface";
+import {
+  IAstVm,
+  IAstVmCallInstruction,
+  IAstVmFunctionInstruction,
+  IAstVmInstruction,
+  IAstVmOpInstruction,
+  IAstVmStackInstruction,
+} from "./vmInterface";
 
 const printVmInstruction = (i: IAstVmInstruction) => {
   switch (i.astType) {
@@ -42,19 +49,24 @@ class VmCompiler {
   public asm: string[] = [];
   public spans: Span[] = [];
   public compileErrors: CompilationError[] = [];
+  public compileWarnings: CompilationError[] = [];
   public startLine: number = 0;
   public boolCount: number = 0;
+  public fnCalls: Record<string, number> = {};
 
   constructor(public filename: string, public ast: IAstVm, public commentLevel: number) {}
 
-  write(s: string) {
-    if (s.startsWith("(")) this.asm.push(s);
-    else this.asm.push(`  ${s}`);
+  write(s: string | string[]) {
+    const ss = Array.isArray(s) == false ? [s] : s;
+    ss.forEach((line) => {
+      if (line.startsWith("(")) this.asm.push(line);
+      else this.asm.push(`  ${line}`);
+    });
   }
 
   compile() {
     this.validateInstructions();
-    if (this.compileErrors.length > 0) return { asm: [], spans: [], compileErrors: this.compileErrors };
+    if (this.compileErrors.length > 0) return { asm: [], spans: [], compileErrors: this.compileErrors, compileWarnings: this.compileWarnings };
     // this.sComment("Init SP to 256");
     // this.write("@256");
     // this.write("D=A");
@@ -94,14 +106,34 @@ class VmCompiler {
           this.writeReturnInstruction();
           break;
         case "callInstruction":
-          throw Error("Call note implemented yet");
+          this.writeCallInstruction(i);
+          break;
       }
       this.endSpan();
     });
-    return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors };
+    return { asm: this.asm, spans: this.spans, compileErrors: this.compileErrors, compileWarnings: this.compileWarnings };
   }
 
   writeReturnInstruction() {
+    // stack was                  will be
+    // ...callerStackValues       ...callerStackValues
+    // arg0                       return value
+    // arg1
+    // ...
+    // argN-1
+    // retAddress
+    // saved LCL
+    // saved ARG
+    // saved THIS
+    // saved THAT
+    // local 0 <== LCL
+    // local 1
+    // ...
+    // local n-1
+    // callee stack
+    // ....
+    // return value
+    // SP
     this.iiComment("save LCL (end of frame) in temporary var R13");
     this.write("@LCL");
     this.write("D=M");
@@ -110,7 +142,7 @@ class VmCompiler {
 
     this.iiComment("save ret addr in temp var R14");
     this.write("@5");
-    this.write("A=D-A");
+    this.write("A=D-A"); // A = LCL - 5
     this.write("D=M");
     this.write("@R14");
     this.write("M=D");
@@ -118,19 +150,19 @@ class VmCompiler {
     this.iiComment("Reposition ret val for the callee");
     this.write("@SP");
     this.write("A=M-1");
-    this.write("D=M");
+    this.write("D=M"); // retrieve return value from top of stack
     this.write("@ARG");
     this.write("A=M");
-    this.write("M=D"); // reposition return value for the calle);
+    this.write("M=D"); // reposition return value for the caller where Arg0 was
 
     this.iiComment("Reposition SP for the callee");
     this.write("D=A+1");
     this.write("@SP");
-    this.write("M=D"); // reposition stack pointer for the calle);
+    this.write("M=D"); // reposition stack pointer for the caller @ old Arg0+1
 
     this.iiComment("Restore THAT");
-    this.write("@R13");
-    this.write("AM=M-1");
+    this.write("@R13"); // A = LCL
+    this.write("AM=M-1"); // A = (R13-=1)
     this.write("D=M");
     this.write("@THAT");
     this.write("M=D"); //  restore THAT (that segment) for the calle);
@@ -163,6 +195,19 @@ class VmCompiler {
   }
 
   writeFunctionInstruction(i: IAstVmFunctionInstruction) {
+    // stack will look like
+    // ...callerStackValues
+    // arg0
+    // arg1
+    // ...
+    // argN-1
+    // retAddress
+    // saved LCL
+    // saved ARG
+    // saved THIS
+    // saved THAT
+    // <== SP
+
     this.write(`(${i.functionName})`);
     this.iiComment("fn prolog: set LCL = current SP");
     this.write("@SP");
@@ -178,6 +223,42 @@ class VmCompiler {
       this.write("A=M-1");
       this.write("M=D");
     }
+  }
+
+  pushSegmentPointer(segment: "LCL" | "ARG" | "THIS" | "THAT") {
+    this.iiComment(`Push ${segment} pointer to stack`);
+    this.write([`@${segment}`, "D=M", "@SP", "M=M+1", "A=M-1", "M=D"]);
+  }
+
+  writeCallInstruction(i: IAstVmCallInstruction) {
+    if (!this.fnCalls[i.functionName]) this.fnCalls[i.functionName] = 0;
+    else this.fnCalls[i.functionName] += 1;
+    const returnAddress = `${i.functionName}$ret.${this.fnCalls[i.functionName]}`;
+
+    this.iiComment("Push return address to stack");
+    this.write(`@${returnAddress}`);
+    this.write(["D=A", "@SP", "M=M+1", "A=M-1", "M=D"]);
+    this.pushSegmentPointer("LCL");
+    this.pushSegmentPointer("ARG");
+    this.pushSegmentPointer("THIS");
+    this.pushSegmentPointer("THAT");
+    this.iiComment("Reposition ARG and LCL");
+
+    this.write([
+      `@${5 + i.numArgs}`, // number to subtract from SP to get to ARG
+      "D=A",
+      "@SP",
+      "D=M-D",
+      "@ARG",
+      "M=D", // reposition ARG
+      "@SP",
+      "D=M",
+      "@LCL",
+      "M=D", // reposition LCL
+      `@${i.functionName}`,
+      "0;JMP", // call function (transfer control to callee)
+      `(${returnAddress})`,
+    ]); // # inject return address label into the code
   }
 
   writeStackInstruction(i: IAstVmStackInstruction) {
@@ -396,7 +477,7 @@ class VmCompiler {
         if (i.functionName == "") this.compileErrors.push({ message: "return without preceeding function", span: i.span });
       } else if (i.astType == "functionInstruction") {
         const findRet = this.ast.instructions.some((ii) => ii.astType == "returnInstruction" && ii.functionName == i.functionName);
-        if (!findRet) this.compileErrors.push({ message: "No matching return", span: i.span });
+        if (!findRet) this.compileWarnings.push({ message: "No matching return", span: i.span });
       }
     });
   }

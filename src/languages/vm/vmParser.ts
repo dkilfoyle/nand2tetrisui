@@ -39,7 +39,7 @@ addToken({
   line_breaks: true,
 });
 
-const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9_.]*/ });
+const ID = createToken({ name: "ID", pattern: /[a-zA-Z][a-zA-Z0-9_$.]*/ });
 const INT = addToken({ name: "INT", pattern: /[0-9]+/ });
 
 const keywords: Record<string, TokenType> = {};
@@ -116,9 +116,11 @@ class VmParser extends EmbeddedActionsParser {
   callInstruction = this.RULE("callInstruction", () => {
     const callkw = this.CONSUME(keywords["call"]);
     const callName = this.CONSUME(ID);
+    const numArgs = this.CONSUME(INT);
     return {
       astType: "callInstruction",
       functionName: callName.image,
+      numArgs: parseInt(numArgs.image),
       span: getTokenSpan(callkw, callName),
     } as IAstVmCallInstruction;
   });
